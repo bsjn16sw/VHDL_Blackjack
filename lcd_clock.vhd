@@ -10,48 +10,53 @@ entity clock is
 				LCD_A : out STD_LOGIC_VECTOR (1 downto 0);
 				LCD_EN : out  STD_LOGIC;
            LCD_D : out  STD_LOGIC_VECTOR (7 downto 0);
-			  DIGIT : out  STD_LOGIC_VECTOR (6 downto 1); -- LED display digit, 6 segments
-           SEG_A : out  STD_LOGIC; -- display a
-           SEG_B : out  STD_LOGIC; -- display b
-           SEG_C : out  STD_LOGIC; -- display c
-           SEG_D : out  STD_LOGIC; -- display d
-           SEG_E : out  STD_LOGIC; -- display e
-           SEG_F : out  STD_LOGIC; -- display f
-           SEG_G : out  STD_LOGIC; -- display g
-           SEG_DP : out  STD_LOGIC);
+			  DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
+           SEG_A : out  STD_LOGIC;
+           SEG_B : out  STD_LOGIC;
+           SEG_C : out  STD_LOGIC;
+           SEG_D : out  STD_LOGIC;
+           SEG_E : out  STD_LOGIC;
+           SEG_F : out  STD_LOGIC;
+           SEG_G : out  STD_LOGIC;
+           SEG_DP : out  STD_LOGIC;
+			  CLK_2s : out STD_LOGIC;
+			  CLK_15s : out STD_LOGIC);
 end clock;
 
 architecture Behavioral of clock is
 
-	component lcd
-		port(FPGA_RSTB : in  STD_LOGIC;		-- reset
-           FPGA_CLK : in  STD_LOGIC;		-- FPGA clock
-           LCD_A : out  STD_LOGIC_VECTOR (1 downto 0);		-- signal RS, RW
-           LCD_EN : out  STD_LOGIC;		-- LCD enable, 1: always enable
+	component lcd_clock
+		port(FPGA_RSTB : in  STD_LOGIC;
+           FPGA_CLK : in  STD_LOGIC;
+           LCD_A : out  STD_LOGIC_VECTOR (1 downto 0);
+           LCD_EN : out  STD_LOGIC;
            LCD_D : out  STD_LOGIC_VECTOR (7 downto 0));
 	end component;
 	
-	component digital_clock
-		port(rst_n : in  STD_LOGIC; -- rst_n='0' -> initialize as 12:58:20
+	component seg_clock
+		port(rst_n : in  STD_LOGIC;
            clk : in  STD_LOGIC; -- 4MHz FPGA oscilator
-           DIGIT : out  STD_LOGIC_VECTOR (6 downto 1); -- LED display digit, 6 segments
-           SEG_A : out  STD_LOGIC; -- display a
-           SEG_B : out  STD_LOGIC; -- display b
-           SEG_C : out  STD_LOGIC; -- display c
-           SEG_D : out  STD_LOGIC; -- display d
-           SEG_E : out  STD_LOGIC; -- display e
-           SEG_F : out  STD_LOGIC; -- display f
-           SEG_G : out  STD_LOGIC; -- display g
-           SEG_DP : out  STD_LOGIC);
+			  -- input score, sum!!!!!!!!
+           DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
+           SEG_A : out  STD_LOGIC;
+           SEG_B : out  STD_LOGIC;
+           SEG_C : out  STD_LOGIC;
+           SEG_D : out  STD_LOGIC;
+           SEG_E : out  STD_LOGIC;
+           SEG_F : out  STD_LOGIC;
+           SEG_G : out  STD_LOGIC;
+           SEG_DP : out  STD_LOGIC;
+			  CLK_2s : out STD_LOGIC;
+			  CLK_15s : out STD_LOGIC);
 	end component;
 	
 begin
 
-	lcd_clock: lcd port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D);
+	lcd_clock_m: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D);
 	
-	seg_clock: digital_clock port map(rst_n, CLK, DIGIT, SEG_A, 
+	seg_clock_m: seg_clock port map(rst_n, CLK, DIGIT, SEG_A, 
 									SEG_B, SEG_C, SEG_D, SEG_E, SEG_F,
-									SEG_G, SEG_DP);
+									SEG_G, SEG_DP, CLK_2s, CLK_15s);
 
 end Behavioral;
 
@@ -62,29 +67,33 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
-entity digital_clock is
-    Port ( rst_n : in  STD_LOGIC; -- rst_n='0' -> initialize as 12:58:20
+entity seg_clock is
+    Port ( rst_n : in  STD_LOGIC;
            clk : in  STD_LOGIC; -- 4MHz FPGA oscilator
-           DIGIT : out  STD_LOGIC_VECTOR (6 downto 1); -- LED display digit, 6 segments
-           SEG_A : out  STD_LOGIC; -- display a
-           SEG_B : out  STD_LOGIC; -- display b
-           SEG_C : out  STD_LOGIC; -- display c
-           SEG_D : out  STD_LOGIC; -- display d
-           SEG_E : out  STD_LOGIC; -- display e
-           SEG_F : out  STD_LOGIC; -- display f
-           SEG_G : out  STD_LOGIC; -- display g
-           SEG_DP : out  STD_LOGIC); -- display dp
-end digital_clock;
+			  -- input score, sum!!!!!!!!
+           DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
+           SEG_A : out  STD_LOGIC;
+           SEG_B : out  STD_LOGIC;
+           SEG_C : out  STD_LOGIC;
+           SEG_D : out  STD_LOGIC;
+           SEG_E : out  STD_LOGIC;
+           SEG_F : out  STD_LOGIC;
+           SEG_G : out  STD_LOGIC;
+           SEG_DP : out  STD_LOGIC;
+			  CLK_2s : out STD_LOGIC;
+			  CLK_15s : out STD_LOGIC);
+end seg_clock;
 
-architecture Behavioral of digital_clock is
+architecture Behavioral of seg_clock is
 
-signal s01_clk : std_logic; -- clock for seconds, rising/descending every 0.5sec
-signal hr10_cnt, hr01_cnt : std_logic_vector( 3 downto 0 ); -- count hours
-signal min10_cnt, min01_cnt : std_logic_vector( 3 downto 0 ); -- count minutes
+signal s1_clk : std_logic; -- clock for seconds, rising/descending every 0.5sec
+signal sum10, sum01 : std_logic_vector( 3 downto 0 ); -- 현재 플레이어 카드 합
+signal score10, score01 : std_logic_vector( 3 downto 0 ); -- 현재 플레이어의 점수
 signal sec10_cnt, sec01_cnt : std_logic_vector( 3 downto 0 ); -- count seconds
 signal sel : std_logic_vector( 2 downto 0 ); -- 7 segment select, select DIGIT
 signal data : std_logic_vector( 3 downto 0 ); -- display value
 signal seg : std_logic_vector( 7 downto 0 ); -- 7 segment display
+signal s2_clk, s15_clk : std_logic; -- clock for 2 / 14 seconds, rising / descending every 1sec / 7sec
 
 begin
 
@@ -92,17 +101,17 @@ begin
 	process(sel)
 	begin
 			case sel is
-					when "000" => DIGIT <= "000001"; -- DIGIT1 for hour(tens)
-							data <= hr10_cnt;
-					when "001" => DIGIT <= "000010"; -- DIGIT2 for hour(units)
-							data <= hr01_cnt;
-					when "010" => DIGIT <= "000100"; -- DIGIT3 for minute(tens)
-							data <= min10_cnt;
-					when "011" => DIGIT <= "001000"; -- DIGIT4 for minute(units)
-							data <= min01_cnt;
-					when "100" => DIGIT <= "010000"; -- DIGIT5 for second(tens)
+					when "000" => DIGIT <= "000001"; -- 현재 플레이어 카드 합(tens)
+							data <= sum10;
+					when "001" => DIGIT <= "000010"; -- 현재 플레이어 카드 합(units)
+							data <= sum01;
+					when "010" => DIGIT <= "000100"; -- 현재 플레이어의 점수(tens)
+							data <= score10;
+					when "011" => DIGIT <= "001000"; -- 현재 플레이어의 점수(units)
+							data <= score01;
+					when "100" => DIGIT <= "010000"; -- second(tens)
 							data <= sec10_cnt;
-					when "101" => DIGIT <= "100000"; -- DIGIT6 for second(units)
+					when "101" => DIGIT <= "100000"; -- second(units)
 							data <= sec01_cnt;
 					when others => null;
 			end case;
@@ -114,17 +123,17 @@ begin
 			variable seg_clk_cnt: integer range 0 to 200; -- determine sweep time(4MHz clk * 200 = 50us period)
 	begin
 			if(rst_n = '0') then -- reset
-					sel <= "000"; -- recount
-					seg_clk_cnt:= 0; -- recount
-			elsif(clk'event and clk='1') then -- when clock is rising
+					sel <= "000";
+					seg_clk_cnt:= 0;
+			elsif(clk'event and clk='1') then
 					if(seg_clk_cnt = 200) then -- change sel value
 							seg_clk_cnt:= 0; -- recount
-							if(sel = "101") then -- go back to 0
+							if(sel = "101") then
 									sel <= "000";
-							else -- increase sel
+							else
 									sel <= sel + 1;
 							end if;
-					else -- increase seg_clk_cnt
+					else
 							seg_clk_cnt:= seg_clk_cnt+1; 
 					end if;
 			end if;
@@ -167,66 +176,57 @@ begin
 			variable count_clk: integer range 0 to 2000000; -- flip after counting 2000000 clocks(0.5sec)
 	begin
 			if(rst_n = '0') then -- reset
-					s01_clk <= '1'; -- clock high
-					count_clk:= 0; -- recount
-			elsif(clk'event and clk='1') then -- when clk is rising
-					if(count_clk < 2000000) then -- increase count_clock
+					s1_clk <= '1';
+					count_clk:= 0;
+			elsif(clk'event and clk='1') then
+					if(count_clk < 2000000) then
 							count_clk:= count_clk + 1;
-					else -- s01_clk rising/desending
-							s01_clk <= not s01_clk; -- flip
+					else -- clk_1s rising/desending
+							s1_clk <= not s1_clk;
 							count_clk:= 0; -- recount
 					end if;
 			end if;
 	end process;
 	
+	-- 2sec clock, 15sec clock
+	process(rst_n, s1_clk)
+			variable cnt_15s : integer range 0 to 7;
+	begin
+			if(rst_n = '0') then -- reset
+					s2_clk <= '1';
+					s15_clk <= '1';
+					cnt_15s := 0;
+			elsif(s1_clk'event and s1_clk='1') then -- every 1s
+					s2_clk <= not s2_clk; -- flip after 1s
+					if(cnt_15s < 7) then
+							cnt_15s := cnt_15s + 1;
+					else
+							s15_clk <= not s15_clk; -- flip after 7s
+							cnt_15s := 0;
+					end if;			
+			end if;
+	end process;
+	
+	CLK_2s <= s2_clk;
+	CLK_15s <= s15_clk;
 	
 	-- count hours, minutes, seconds by rst_n, s01_clk rising
-	process(s01_clk, rst_n)
-			variable h10_cnt, h01_cnt : STD_LOGIC_VECTOR ( 3 downto 0); -- count for hour(tens, units)
-			variable m10_cnt, m01_cnt : STD_LOGIC_VECTOR ( 3 downto 0); -- count for minute(tens, units)
+	process(s1_clk, rst_n) -- input score, sum!!!!!!!!!!!
 			variable s10_cnt, s01_cnt : STD_LOGIC_VECTOR ( 3 downto 0); -- count for second(tens, units)
 	begin
-			if(rst_n = '0') then -- 12:58:20
+			if(rst_n = '0') then -- 00:00:00
 					s01_cnt:= "0000"; -- '0'
-					s10_cnt:= "0010"; -- '2'
-					m01_cnt:= "1000"; -- '8'
-					m10_cnt:= "0101"; -- '5'
-					h01_cnt:= "0010"; -- '2'
-					h10_cnt:= "0001"; -- '1'
+					s10_cnt:= "0000"; -- '0'
 					
-			elsif(s01_clk = '1' and s01_clk'event) then -- when s01_clk is rising
+			elsif(s1_clk = '1' and s1_clk'event) then -- when s01_clk is rising
 					s01_cnt:= s01_cnt + 1; -- increase second(units)
 					-- count of second(units)
 					if(s01_cnt > "1001") then -- when s01_cnt = 10, recount and increase s10_cnt
 							s01_cnt:= "0000"; -- recount
 							s10_cnt:= s10_cnt + 1; -- increase s10_cnt
 					end if;
-					-- count of second(tens)
-					if(s10_cnt > "0101") then -- when s10_cnt = 6, recount and increase m01_cnt
-							s10_cnt:= "0000"; -- recount
-							m01_cnt:= m01_cnt + 1; -- increase m01_cnt
-					end if;
-					-- count of minute(units)
-					if(m01_cnt > "1001") then -- when m01_cnt = 10, recount and increase m10_cnt
-							m01_cnt:= "0000"; -- recount
-							m10_cnt:= m10_cnt + 1; -- increase m10_cnt
-					end if;
-					-- count of minute(tens)
-					if(m10_cnt > "0101") then -- when m10_cnt = 6, recount and increase h01_cnt
-							m10_cnt:= "0000"; -- recount
-							h01_cnt:= h01_cnt + 1; -- increase h01_cnt
-					end if;
-					-- count of hour(units)
-					if(h01_cnt > "1001") then -- when h01_cnt = 10, recount and increase h10_cnt
-							h01_cnt:= "0000"; -- recount
-							h10_cnt:= h10_cnt + 1; -- increase h10_cnt
-					end if;
-					--12:59:59까지
-					if(h10_cnt = "0001" and h01_cnt > "0010") then -- go back to 01:00:00
-							h10_cnt:= "0000";
-							h01_cnt:= "0001";
-							m10_cnt:= "0000";
-							m01_cnt:= "0000";
+					-- 00:00:15
+					if(s10_cnt = "0001" and s01_cnt > "0101") then -- go back to 00:00:00
 							s10_cnt:= "0000";
 							s01_cnt:= "0000";
 					end if;
@@ -234,10 +234,10 @@ begin
 			
 			sec01_cnt <= s01_cnt;
 			sec10_cnt <= s10_cnt;
-			min01_cnt <= m01_cnt;
-			min10_cnt <= m10_cnt;
-			hr01_cnt <= h01_cnt;
-			hr10_cnt <= h10_cnt;
+			score01 <= "0000"; -- input score, sum!!!!!!!!
+			score10 <= "0000";
+			sum01 <= "0000";
+			sum10 <= "0000";
 			
 	end process;
 	
@@ -253,15 +253,15 @@ use IEEE.STD_LOGIC_ARITH.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 
-entity lcd is
+entity lcd_clock is
     Port ( FPGA_RSTB : in  STD_LOGIC;		-- reset
            FPGA_CLK : in  STD_LOGIC;		-- FPGA clock
            LCD_A : out  STD_LOGIC_VECTOR (1 downto 0);		-- signal RS, RW
            LCD_EN : out  STD_LOGIC;		-- LCD enable, 1: always enable
            LCD_D : out  STD_LOGIC_VECTOR (7 downto 0));		-- LCD data
-end lcd;
+end lcd_clock;
 
-architecture Behavioral of lcd is
+architecture Behavioral of lcd_clock is
 
 signal load_100k : std_logic;		-- high: clk_100k flip
 signal clk_100k : std_logic;		-- 100 KHz clock
