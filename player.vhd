@@ -60,7 +60,11 @@ begin
 			end if;
 		end loop;
 		
-		p_score <= cardsum;
+		if cnt=2 and ace='1' and ten='1' then -- 특수한 경우, 200점 리턴
+			p_score <= 200; 
+		else -- 그 외에 제 값 리턴
+			p_score <= cardsum;
+		end if;
 		
 	end process;
 	
@@ -77,7 +81,8 @@ begin
 		end if;
 	end process;
 	
-	-- round에게 cardsum 보내기 portmap
+	-- round에게 p_score 보내기 portmap (이 코드에서는 p_score를 아웃풋으로 놓음)
+	
 
 end behavior;
 
