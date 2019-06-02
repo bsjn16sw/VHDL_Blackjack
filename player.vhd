@@ -21,6 +21,8 @@ architecture behavior of player is
 	signal randcard : integer; -- random card: 1~10
 	signal state : integer :=1;
 	signal cardsum : integer :=0; -- dealer's current card sum
+	signal ace : std_logic := '0';
+	signal ten : std_logic := '0';
 	
 	
 begin
