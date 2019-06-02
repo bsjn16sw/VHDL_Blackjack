@@ -16,12 +16,12 @@ architecture behavior of player is
         cnt : out std_logic_vector(5 downto 0));   
 	end component;
 	
-	
 	signal tmp : std_logic_vector(5 downto 0);
 	signal tmp1 : integer;
 	signal randcard : integer; -- random card: 1~10
 	signal state : integer :=1;
 	signal cardsum : integer :=0; -- dealer's current card sum
+	
 	
 begin
 	take_random : LFSR port map (clk,rst,en, tmp);
@@ -40,22 +40,28 @@ begin
 	end process;
 	
 	process(clk, 15s) -- main method
+		variable cnt : integer := 0; -- total cardnum
+	
 	begin
-		if 15s = '1' then
-			while state=1 loop
+		while state=1 loop
+			if 15s = '1' then
 				cardsum <= cardsum + randcard;
+				cnt <= cnt + 1;
 				if push_sw(0) then -- hit
 					-- display lcd : Hit, card
 					state <= 1;
 				elsif push_sw(1) then -- stay
-					-- display lcd : Stay,card
+					-- display lcd : Stay, card
 					state <= 0;
 				end if;
-			end loop;
-			p_score <= cardsum;
-		else
-			-- display lcd : 15 sec is over
-		end if;
+			else
+				-- display lcd : 15 sec is over
+				state <= 0;
+			end if;
+		end loop;
+		
+		p_score <= cardsum;
+		
 	end process;
 	
 	process(clk, load_op1, load_op2, load_op3) -- push button
@@ -71,7 +77,7 @@ begin
 		end if;
 	end process;
 	
-	-- round¿¡°Ô cardsum º¸³»±â portmap
+	-- roundì—ê²Œ cardsum ë³´ë‚´ê¸° portmap
 
 end behavior;
 
