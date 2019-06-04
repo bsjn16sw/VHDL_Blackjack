@@ -22,7 +22,7 @@ end component;
 
 signal a : std_logic;
 signal b : std_logic;
-signal max_card : integer :=3;
+signal max_card : integer := 0;
 signal en : std_logic;
 signal cnt: STD_LOGIC_VECTOR (5 downto 0);
 
@@ -35,8 +35,7 @@ begin
 	begin
 		if rising_edge(clk) then
 			if start='1' then
-				a<='1';
-				b<='1';
+				max_card <= 2;
 				fin <= '1';
 			end if;
 		end if;
