@@ -7,6 +7,8 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 entity clock is
 	port ( rst_n : in STD_LOGIC;
 				CLK : in STD_LOGIC;
+				--SCORE : in integer;
+			  --SUM : in integer;
 				LCD_A : out STD_LOGIC_VECTOR (1 downto 0);
 				LCD_EN : out  STD_LOGIC;
            LCD_D : out  STD_LOGIC_VECTOR (7 downto 0);
@@ -20,7 +22,7 @@ entity clock is
            SEG_G : out  STD_LOGIC;
            SEG_DP : out  STD_LOGIC;
 			  CLK_2s : out STD_LOGIC;
-			  CLK_15s : out STD_LOGIC);
+			  CLK_14s : out STD_LOGIC);
 end clock;
 
 architecture Behavioral of clock is
@@ -37,6 +39,8 @@ architecture Behavioral of clock is
 		port(rst_n : in  STD_LOGIC;
            clk : in  STD_LOGIC; -- 4MHz FPGA oscilator
 			  -- input score, sum!!!!!!!!
+			  SCORE : in integer;
+			  SUM : in integer;
            DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
            SEG_A : out  STD_LOGIC;
            SEG_B : out  STD_LOGIC;
@@ -47,16 +51,16 @@ architecture Behavioral of clock is
            SEG_G : out  STD_LOGIC;
            SEG_DP : out  STD_LOGIC;
 			  CLK_2s : out STD_LOGIC;
-			  CLK_15s : out STD_LOGIC);
-	end component;
+			  CLK_14s : out STD_LOGIC);
+	end component; 
 	
 begin
 
 	lcd_clock_m: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D);
 	
-	seg_clock_m: seg_clock port map(rst_n, CLK, DIGIT, SEG_A, 
+	seg_clock_m: seg_clock port map(rst_n, CLK, 40, 18, DIGIT, SEG_A, 
 									SEG_B, SEG_C, SEG_D, SEG_E, SEG_F,
-									SEG_G, SEG_DP, CLK_2s, CLK_15s);
+									SEG_G, SEG_DP, CLK_2s, CLK_14s);
 
 end Behavioral;
 
@@ -66,11 +70,14 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 entity seg_clock is
     Port ( rst_n : in  STD_LOGIC;
            clk : in  STD_LOGIC; -- 4MHz FPGA oscilator
 			  -- input score, sum!!!!!!!!
+			  SCORE : in integer;
+			  SUM : in integer;
            DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
            SEG_A : out  STD_LOGIC;
            SEG_B : out  STD_LOGIC;
@@ -81,7 +88,7 @@ entity seg_clock is
            SEG_G : out  STD_LOGIC;
            SEG_DP : out  STD_LOGIC;
 			  CLK_2s : out STD_LOGIC;
-			  CLK_15s : out STD_LOGIC);
+			  CLK_14s : out STD_LOGIC);
 end seg_clock;
 
 architecture Behavioral of seg_clock is
@@ -93,9 +100,14 @@ signal sec10_cnt, sec01_cnt : std_logic_vector( 3 downto 0 ); -- count seconds
 signal sel : std_logic_vector( 2 downto 0 ); -- 7 segment select, select DIGIT
 signal data : std_logic_vector( 3 downto 0 ); -- display value
 signal seg : std_logic_vector( 7 downto 0 ); -- 7 segment display
-signal s2_clk, s15_clk : std_logic; -- clock for 2 / 14 seconds, rising / descending every 1sec / 7sec
+signal s2_clk, s14_clk : std_logic; -- clock for 2 / 14 seconds, rising / descending every 1sec / 7sec
+signal myscore, mysum : integer;
+signal tmp : std_logic_vector(5 downto 0);
 
 begin
+
+	myscore <= SCORE;
+	mysum <= SUM;
 
 	-- determine LED display digit by sel value
 	process(sel)
@@ -188,29 +200,29 @@ begin
 			end if;
 	end process;
 	
-	-- 2sec clock, 15sec clock
+	-- 2sec clock, 14sec clock
 	process(rst_n, s1_clk)
-			variable cnt_15s : integer range 0 to 7;
+			variable cnt_14s : integer range 0 to 7;
 	begin
 			if(rst_n = '0') then -- reset
 					s2_clk <= '1';
-					s15_clk <= '1';
-					cnt_15s := 0;
+					s14_clk <= '1';
+					cnt_14s := 0;
 			elsif(s1_clk'event and s1_clk='1') then -- every 1s
 					s2_clk <= not s2_clk; -- flip after 1s
-					if(cnt_15s < 7) then
-							cnt_15s := cnt_15s + 1;
+					if(cnt_14s < 7) then
+							cnt_14s := cnt_14s + 1;
 					else
-							s15_clk <= not s15_clk; -- flip after 7s
-							cnt_15s := 0;
+							s14_clk <= not s14_clk; -- flip after 7s
+							cnt_14s := 0;
 					end if;			
 			end if;
 	end process;
 	
 	CLK_2s <= s2_clk;
-	CLK_15s <= s15_clk;
+	CLK_14s <= s14_clk;
 	
-	-- count hours, minutes, seconds by rst_n, s01_clk rising
+	-- count seconds by rst_n, s1_clk rising
 	process(s1_clk, rst_n) -- input score, sum!!!!!!!!!!!
 			variable s10_cnt, s01_cnt : STD_LOGIC_VECTOR ( 3 downto 0); -- count for second(tens, units)
 	begin
@@ -234,12 +246,53 @@ begin
 			
 			sec01_cnt <= s01_cnt;
 			sec10_cnt <= s10_cnt;
-			score01 <= "0000"; -- input score, sum!!!!!!!!
-			score10 <= "0000";
-			sum01 <= "0000";
-			sum10 <= "0000";
 			
 	end process;
+	
+	-- display sum, score
+	process(s1_clk, rst_n)
+			variable score10_cnt : STD_LOGIC_VECTOR(3 downto 0);
+			variable sum01_cnt, sum10_cnt : STD_LOGIC_VECTOR(3 downto 0);
+	begin
+			tmp <= std_logic_vector(to_unsigned(myscore, 6));
+			if tmp < "001010" then	-- 0s
+					score10_cnt:= "0000";			
+			elsif tmp >= "001010" and tmp < "010100" then	-- 10
+					score10_cnt:= "0001";
+			elsif tmp >= "010100" and tmp < "011110" then	-- 20
+					score10_cnt:= "0010";
+			elsif tmp >= "011110" and tmp < "101000" then	-- 30
+					score10_cnt:= "0011";
+			elsif tmp >= "101000" and tmp < "110010" then	-- 40
+					score10_cnt:= "0100";
+			elsif tmp >= "110010" and tmp < "" then	-- 50
+					score10_cnt:= "0101";
+			else		-- 60
+					score10_cnt:= "0110";
+			end if;
+			
+			tmp <= std_logic_vector(to_unsigned(mysum, 6));
+			if tmp < "001010" then	-- 0s
+					sum10_cnt:= "0000";
+					sum01_cnt:= tmp - "001010";
+			elsif tmp >= "001010" and tmp < "010100" then	-- 10s
+					sum10_cnt:= "0001";
+					sum01_cnt:= tmp - "001010";
+			elsif tmp >= "010100" and tmp < "011110" then	-- 20s
+					sum10_cnt:= "0010";
+					sum01_cnt:= tmp - "010100";
+			else
+					sum10_cnt:= "0011";
+					sum01_cnt:= tmp - "011110";
+			end if;
+			
+			score01 <= "0000";
+			score10 <= score10_cnt;
+			sum01 <= sum01_cnt;
+			sum10 <= sum10_cnt;
+			
+	end process;
+
 	
 end Behavioral;
 
