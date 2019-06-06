@@ -340,21 +340,86 @@ end Behavioral;
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.MATH_REAL.ALL;
 
-entity reg_idx_gen is
+entity player is
 	port (
 		rst: in std_logic;
 		clk: in std_logic;
-		idx: out integer );
-end reg_idx_gen;
+		num: in integer;			-- player num
+		load_stay: in std_logic;
+		load_hit: in std_logic;
+		start: in std_logic;
+		fin: out std_logic;		-- let next player start (to next player)
+		sen_idx: out integer;	-- sentence idx (to data_gen)
+		pnum: out integer;		-- player num (to 7seg)
+		csum: out integer;		-- card sum (to 7seg)
+		stime: out std_logic );	-- start timing (to 7seg)
+end player;
 
-architecture Behavioral of reg_idx_gen is
+architecture Behavioral of player is
+
+signal my_start: std_logic;
+signal turn: std_logic := '1';
+signal make_random: std_logic := '1';
+signal init_set: std_logic := '0';
 
 signal s1_clk, s2_clk, s4_clk: std_logic;
-signal temp_idx: integer := 0;
+
+signal rand_data: integer := 0;
+type int_arr is array (0 to 15) of integer;
+signal card: int_arr;
+signal cur_idx: integer;
+signal cardsum: integer := 0;
+signal cardnum: integer := 0;
+signal my_sen_idx: integer := 0;
 
 begin
-	idx <= temp_idx;
+
+	my_start <= start;
+	sen_idx <= my_sen_idx;
+	pnum <= num;
+	csum <= cardsum;
+--	stime <= 
+
+	-- Make random data
+	process(clk)
+	begin
+		if rising_edge(clk) then
+			if make_random = '1' then
+				rand_data <= 13 * rand_data + 1;
+			end if;
+		end if;
+	end process;
+	
+	process(clk)
+		variable idx: integer := 0;
+	begin
+		if rising_edge(clk) then
+			if my_start = '1' and turn = '1' and idx < 15 then
+				make_random <= '0';
+				card(idx) <= rand_data mod 16 + 1;
+				idx := idx + 1;
+				make_random <= '1';
+			end if;
+			
+			if idx = 15 then
+				init_set <= '1';
+				cur_idx <= 5;
+				cardsum <= card(3) + card(4);
+				cardnum <= 2;
+				idx := idx + 1; -- not to take this if statement
+			end if;
+			
+--			if my_start = '1' and turn = '1' and init_set = '1' then
+--				if load_stay = '0' then
+--					
+--				elsif load_hit = '0' then
+--					
+--				end if;
+--			end if;
+		end if;
+	end process;
 	
 	-- Clock generator (Period = 1s)
 	process(rst, clk)
@@ -373,7 +438,7 @@ begin
 		end if;
 	end process;
 	
-	-- Clock generator (Period = 2s, 14s)
+	-- Clock generator (Period = 2s, 4s)
 	process(rst, s1_clk)
 		variable s4_cnt: integer range 0 to 2;
 	begin
@@ -395,11 +460,15 @@ begin
 	process(s4_clk)
 	begin
 		if rising_edge(s4_clk) then
-			temp_idx <= temp_idx + 1;
+			if cardnum = 2 and my_sen_idx < 1 then
+				my_sen_idx <= my_sen_idx + 1;
+			end if;
 		end if;
 	end process;
+	
 
 end Behavioral;
+		
 
 ----------------------------------------------------
 
@@ -411,6 +480,8 @@ entity main2 is
 		rst: in std_logic;
 		clk: in std_logic;
 		data_out: in std_logic;
+		load_stay: in std_logic;
+		load_hit: in std_logic;
 		LCD_A: out std_logic_vector (1 downto 0);
 		LCD_EN: out std_logic;
 		LCD_D: out std_logic_vector (7 downto 0) );
@@ -418,11 +489,19 @@ end main2;
 
 architecture Behavioral of main2 is
 
-component reg_idx_gen is
+component player is
 	port (
 		rst: in std_logic;
 		clk: in std_logic;
-		idx: out integer );
+		num: in integer;			-- player num
+		load_stay: in std_logic;
+		load_hit: in std_logic;
+		start: in std_logic;
+		fin: out std_logic;		-- let next player start (to next player)
+		sen_idx: out integer;	-- sentence idx (to data_gen)
+		pnum: out integer;		-- player num (to 7seg)
+		csum: out integer;		-- card sum (to 7seg)
+		stime: out std_logic );	-- start timing (to 7seg)
 end component;
 
 component data_gen is
@@ -449,14 +528,21 @@ component lcd_test is
 		w_enable: out STD_LOGIC );
 end component;
 
+signal start: std_logic := '1';
+signal fin1: std_logic := '0';
 signal my_idx: integer;
 signal data_out_reg, w_enable_reg : std_logic;
 signal addr_reg : std_logic_vector(4 downto 0);
 signal data_reg : std_logic_vector(7 downto 0);
 
+signal pn: integer;
+signal cs: integer;
+signal st: std_logic;
+
 begin
 
-	my_reg_idx_gen: reg_idx_gen port map (rst, clk, my_idx);
+	p1: player port map (rst, clk, 1, load_stay, load_hit, start,
+		fin1, my_idx, pn, cs, st);
 	my_data_gen: data_gen port map(rst, clk, my_idx, w_enable_reg,
 		data_out_reg, addr_reg, data_reg);
 	my_lcd_test: lcd_test port map(rst, clk, data_out_reg, addr_reg,
