@@ -1,3 +1,4 @@
+    
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
@@ -234,11 +235,11 @@ constant reg_buf_5: reg :=
 	(X"31", X"35", X"73", X"65", X"63", X"20", X"69", X"73", X"20", X"6F", X"76", X"65", X"72", X"20", X"20", X"20",	-- 15sec is over
 	 X"50", X"31", X"27", X"73", X"20", X"74", X"75", X"72", X"6E", X"20", X"6E", X"6F", X"77", X"20", X"20", X"20");	-- P1's turn now
 constant reg_buf_6: reg :=
-	(X"44", X"65", X"61", X"6C", X"65", X"72", X"27", X"20", X"74", X"75", X"72", X"6E", X"20", X"20", X"20", X"20",	-- Dealer's turn
+	(X"44", X"65", X"61", X"6C", X"65", X"72", X"27", X"73", X"20", X"74", X"75", X"72", X"6E", X"20", X"20", X"20",	-- Dealer's turn
 	 X"53", X"75", X"6D", X"3C", X"31", X"37", X"20", X"73", X"6F", X"20", X"68", X"69", X"74", X"20", X"20", X"20");	-- Sum<17 so hit
 constant reg_buf_7: reg :=
-	(X"44", X"65", X"61", X"6C", X"65", X"72", X"27", X"20", X"74", X"75", X"72", X"6E", X"20", X"20", X"20", X"20",	-- Dealer's turn
-	 X"53", X"75", X"6D", X"76", X"75", X"31", X"37", X"20", X"73", X"6F", X"20", X"73", X"74", X"61", X"79", X"20");	-- Sum>=17 so stay
+	(X"44", X"65", X"61", X"6C", X"65", X"72", X"27", X"73", X"20", X"74", X"75", X"72", X"6E", X"20", X"20", X"20",	-- Dealer's turn
+	 X"53", X"75", X"6D", X"3E", X"3D", X"31", X"37", X"20", X"73", X"6F", X"20", X"73", X"74", X"61", X"79", X"20");	-- Sum>=17 so stay
 constant reg_buf_8: reg :=
 	(X"52", X"6F", X"75", X"6E", X"64", X"31", X"20", X"69", X"73", X"20", X"6F", X"76", X"65", X"72", X"20", X"20",	-- Round1 is over
 	 X"50", X"31", X"20", X"77", X"69", X"6E", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20");	-- P1 win
@@ -349,7 +350,7 @@ end reg_idx_gen;
 
 architecture Behavioral of reg_idx_gen is
 
-signal s1_clk: std_logic;
+signal s1_clk, s2_clk, s4_clk: std_logic;
 signal temp_idx: integer := 0;
 
 begin
@@ -372,9 +373,28 @@ begin
 		end if;
 	end process;
 	
-	process(s1_clk)
+	-- Clock generator (Period = 2s, 14s)
+	process(rst, s1_clk)
+		variable s4_cnt: integer range 0 to 2;
 	begin
-		if rising_edge(s1_clk) then
+		if rst = '0' then
+			s2_clk <= '1';
+			s4_clk <= '1';
+			s4_cnt := 0;
+		elsif s1_clk'event and s1_clk = '1' then
+			s2_clk <= not s2_clk;
+			if s4_cnt < 2 then
+				s4_cnt := s4_cnt + 1;
+			else
+				s4_clk <= not s4_clk;
+				s4_cnt := 0;
+			end if;
+		end if;
+	end process;
+	
+	process(s4_clk)
+	begin
+		if rising_edge(s4_clk) then
 			temp_idx <= temp_idx + 1;
 		end if;
 	end process;
