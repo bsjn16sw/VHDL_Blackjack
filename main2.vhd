@@ -363,6 +363,7 @@ signal my_start: std_logic;
 signal turn: std_logic := '1';
 signal make_random: std_logic := '1';
 signal init_set: std_logic := '0';
+signal change_sen_idx: integer := 0;
 
 signal s1_clk, s2_clk, s4_clk: std_logic;
 
@@ -411,13 +412,14 @@ begin
 				idx := idx + 1; -- not to take this if statement
 			end if;
 			
---			if my_start = '1' and turn = '1' and init_set = '1' then
---				if load_stay = '0' then
---					
+			if my_start = '1' and turn = '1' and init_set = '1' then
+				if load_stay = '0' then
+					change_sen_idx <= 4;
+
 --				elsif load_hit = '0' then
---					
---				end if;
---			end if;
+					
+				end if;
+			end if;
 		end if;
 	end process;
 	
@@ -462,6 +464,12 @@ begin
 		if rising_edge(s4_clk) then
 			if cardnum = 2 and my_sen_idx < 1 then
 				my_sen_idx <= my_sen_idx + 1;
+			end if;
+			
+			if change_sen_idx = 4 then
+				my_sen_idx <= 4;
+				turn <= '0';	-- end this player's turn
+				fin <= '1';		-- start next player's turn
 			end if;
 		end if;
 	end process;
@@ -529,24 +537,38 @@ component lcd_test is
 end component;
 
 signal start: std_logic := '1';
-signal fin1: std_logic := '0';
-signal my_idx: integer;
+signal fin1, fin2: std_logic := '0';
+signal my_idx, my_idx1, my_idx2: integer;
 signal data_out_reg, w_enable_reg : std_logic;
 signal addr_reg : std_logic_vector(4 downto 0);
 signal data_reg : std_logic_vector(7 downto 0);
 
-signal pn: integer;
-signal cs: integer;
-signal st: std_logic;
+signal pn1, pn2: integer;
+signal cs1, cs2: integer;
+signal st1, st2: std_logic;
 
 begin
 
 	p1: player port map (rst, clk, 1, load_stay, load_hit, start,
-		fin1, my_idx, pn, cs, st);
+		fin1, my_idx1, pn1, cs1, st1);
+	p2: player port map (rst, clk, 2, load_stay, load_hit, fin1,
+		fin2, my_idx2, pn2, cs2, st2);
 	my_data_gen: data_gen port map(rst, clk, my_idx, w_enable_reg,
 		data_out_reg, addr_reg, data_reg);
 	my_lcd_test: lcd_test port map(rst, clk, data_out_reg, addr_reg,
 		data_reg, LCD_A, LCD_EN, LCD_D, w_enable_reg);
+		
+	process(clk)
+	begin
+		if rising_edge(clk) then
+			if fin1 = '0' then
+				my_idx <= my_idx1;
+			elsif fin1 = '1' and fin2 = '0' then
+				my_idx <= my_idx2;
+			end if;
+		end if;
+	end process;
+	
 	
 
 end Behavioral;
