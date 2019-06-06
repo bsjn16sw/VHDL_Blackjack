@@ -25,7 +25,7 @@ ARCHITECTURE behavior OF main2_TB IS
    signal idx : integer;
 
    -- Clock period definitions
-   constant clk_period : time := 10 ns;
+   constant clk_period : time := 250 ns;
  
 BEGIN
  
@@ -48,7 +48,10 @@ BEGIN
 
    -- Stimulus process
    stim_proc: process
-   begin		
+   begin	
+		rst <= '0';
+		wait for 10ns;
+		rst <= '1';
       wait;
    end process;
 
