@@ -199,12 +199,15 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
 
 entity data_gen is
 	port (
 		rst: in std_logic;
 		clk: in std_logic;
 		idx: in integer;
+		cardsum: in integer;
 		w_enable: in std_logic;
 		data_out: out std_logic;
 		addr: out std_logic_vector (4 downto 0);
@@ -272,18 +275,299 @@ begin
 				for i in 0 to 31 loop
 					reg_file(i) <= reg_buf_1(i);
 				end loop;
+				
+				if cardsum = 0 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"30";
+				elsif cardsum = 1 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"31";
+				elsif cardsum = 2 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"32";
+				elsif cardsum = 3 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"33";
+				elsif cardsum = 4 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"34";
+				elsif cardsum = 5 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"35";
+				elsif cardsum = 6 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"36";
+				elsif cardsum = 7 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"37";
+				elsif cardsum = 8 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"38";
+				elsif cardsum = 9 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"39";
+				elsif cardsum = 10 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"30";
+				elsif cardsum = 11 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"31";
+				elsif cardsum = 12 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"32";
+				elsif cardsum = 13 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"33";
+				elsif cardsum = 14 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"34";
+				elsif cardsum = 15 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"35";
+				elsif cardsum = 16 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"36";
+				elsif cardsum = 17 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"37";
+				elsif cardsum = 18 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"38";
+				elsif cardsum = 19 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"39";
+				elsif cardsum = 20 then
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"30";
+				elsif cardsum = 21 then
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"31";
+				else
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"31";
+				end if;
 			elsif my_idx = 2 then
 				for i in 0 to 31 loop
 					reg_file(i) <= reg_buf_2(i);
 				end loop;
+				if cardsum = 0 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"30";
+				elsif cardsum = 1 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"31";
+				elsif cardsum = 2 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"32";
+				elsif cardsum = 3 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"33";
+				elsif cardsum = 4 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"34";
+				elsif cardsum = 5 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"35";
+				elsif cardsum = 6 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"36";
+				elsif cardsum = 7 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"37";
+				elsif cardsum = 8 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"38";
+				elsif cardsum = 9 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"39";
+				elsif cardsum = 10 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"30";
+				elsif cardsum = 11 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"31";
+				elsif cardsum = 12 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"32";
+				elsif cardsum = 13 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"33";
+				elsif cardsum = 14 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"34";
+				elsif cardsum = 15 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"35";
+				elsif cardsum = 16 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"36";
+				elsif cardsum = 17 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"37";
+				elsif cardsum = 18 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"38";
+				elsif cardsum = 19 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"39";
+				elsif cardsum = 20 then
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"30";
+				elsif cardsum = 21 then
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"31";
+				else
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"31";
+				end if;
 			elsif my_idx = 3 then
 				for i in 0 to 31 loop
 					reg_file(i) <= reg_buf_3(i);
 				end loop;
+				if cardsum = 0 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"30";
+				elsif cardsum = 1 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"31";
+				elsif cardsum = 2 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"32";
+				elsif cardsum = 3 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"33";
+				elsif cardsum = 4 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"34";
+				elsif cardsum = 5 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"35";
+				elsif cardsum = 6 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"36";
+				elsif cardsum = 7 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"37";
+				elsif cardsum = 8 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"38";
+				elsif cardsum = 9 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"39";
+				elsif cardsum = 10 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"30";
+				elsif cardsum = 11 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"31";
+				elsif cardsum = 12 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"32";
+				elsif cardsum = 13 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"33";
+				elsif cardsum = 14 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"34";
+				elsif cardsum = 15 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"35";
+				elsif cardsum = 16 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"36";
+				elsif cardsum = 17 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"37";
+				elsif cardsum = 18 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"38";
+				elsif cardsum = 19 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"39";
+				elsif cardsum = 20 then
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"30";
+				elsif cardsum = 21 then
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"31";
+				else
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"31";
+				end if;
 			elsif my_idx = 4 then
 				for i in 0 to 31 loop
 					reg_file(i) <= reg_buf_4(i);
 				end loop;
+				if cardsum = 0 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"30";
+				elsif cardsum = 1 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"31";
+				elsif cardsum = 2 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"32";
+				elsif cardsum = 3 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"33";
+				elsif cardsum = 4 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"34";
+				elsif cardsum = 5 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"35";
+				elsif cardsum = 6 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"36";
+				elsif cardsum = 7 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"37";
+				elsif cardsum = 8 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"38";
+				elsif cardsum = 9 then
+					reg_file(14) <= X"30";
+					reg_file(15) <= X"39";
+				elsif cardsum = 10 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"30";
+				elsif cardsum = 11 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"31";
+				elsif cardsum = 12 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"32";
+				elsif cardsum = 13 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"33";
+				elsif cardsum = 14 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"34";
+				elsif cardsum = 15 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"35";
+				elsif cardsum = 16 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"36";
+				elsif cardsum = 17 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"37";
+				elsif cardsum = 18 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"38";
+				elsif cardsum = 19 then
+					reg_file(14) <= X"31";
+					reg_file(15) <= X"39";
+				elsif cardsum = 20 then
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"30";
+				elsif cardsum = 21 then
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"31";
+				else
+					reg_file(14) <= X"32";
+					reg_file(15) <= X"31";
+				end if;
 			elsif my_idx = 5 then
 				for i in 0 to 31 loop
 					reg_file(i) <= reg_buf_5(i);
@@ -363,7 +647,6 @@ signal my_start: std_logic;
 signal turn: std_logic := '1';
 signal make_random: std_logic := '1';
 signal init_set: std_logic := '0';
-signal change_sen_idx: integer := 0;
 
 signal s1_clk, s2_clk, s4_clk: std_logic;
 
@@ -374,6 +657,7 @@ signal cur_idx: integer;
 signal cardsum: integer := 0;
 signal cardnum: integer := 0;
 signal my_sen_idx: integer := 0;
+signal change_sen_idx: integer := 0;
 
 begin
 
@@ -388,23 +672,26 @@ begin
 	begin
 		if rising_edge(clk) then
 			if make_random = '1' then
-				rand_data <= 13 * rand_data + 1;
+				rand_data <= 15 * rand_data + 1;
 			end if;
 		end if;
 	end process;
 	
 	process(clk)
 		variable idx: integer := 0;
+		variable count_clk: integer range 0 to 5000000; -- flip after counting 5000000 clocks(0.5sec)
+      variable cnt: std_logic :='0';
 	begin
 		if rising_edge(clk) then
-			if my_start = '1' and turn = '1' and idx < 15 then
-				make_random <= '0';
-				card(idx) <= rand_data mod 16 + 1;
+			if my_start = '1' and turn = '1' and idx < 15 and init_set = '0' then
+--				make_random <= '0';
+--				card(idx) <= rand_data mod 16 + 1;
+				card(idx) <= 1;
 				idx := idx + 1;
-				make_random <= '1';
+--				make_random <= '1';
 			end if;
 			
-			if idx = 15 then
+			if idx = 15 and init_set = '0' then
 				init_set <= '1';
 				cur_idx <= 5;
 				cardsum <= card(3) + card(4);
@@ -412,14 +699,30 @@ begin
 				idx := idx + 1; -- not to take this if statement
 			end if;
 			
-			if my_start = '1' and turn = '1' and init_set = '1' then
+			if my_start = '1' and turn = '1' and init_set = '1' and cnt='0' then
 				if load_stay = '0' then
+					cnt:='1';
 					change_sen_idx <= 4;
-
---				elsif load_hit = '0' then
-					
+					turn <= '0';
+					fin <= '1';
+				elsif load_hit = '0' then
+					cnt:='1';
+					change_sen_idx <= 2;
+					make_random <= '0';
+					cardsum <= cardsum + card(cur_idx);
+					cur_idx <= cur_idx + 1;
+					cardnum <= cardnum + 1;
+					make_random <= '1';
 				end if;
 			end if;
+			
+			if(count_clk < 5000000) then
+               count_clk:= count_clk + 1;
+         else -- clk_1s rising/desending
+               cnt := not cnt;
+               count_clk:= 0; -- recount
+         end if;
+
 		end if;
 	end process;
 	
@@ -468,8 +771,8 @@ begin
 			
 			if change_sen_idx = 4 then
 				my_sen_idx <= 4;
-				turn <= '0';	-- end this player's turn
-				fin <= '1';		-- start next player's turn
+			elsif change_sen_idx = 2 then
+				my_sen_idx <= 2;
 			end if;
 		end if;
 	end process;
@@ -517,6 +820,7 @@ component data_gen is
 		rst: in std_logic;
 		clk: in std_logic;
 		idx: in integer;
+		cardsum: in integer;
 		w_enable: in std_logic;
 		data_out: out std_logic;
 		addr: out std_logic_vector (4 downto 0);
@@ -537,38 +841,24 @@ component lcd_test is
 end component;
 
 signal start: std_logic := '1';
-signal fin1, fin2: std_logic := '0';
-signal my_idx, my_idx1, my_idx2: integer;
+signal fin1: std_logic := '0';
+signal my_idx: integer;
 signal data_out_reg, w_enable_reg : std_logic;
 signal addr_reg : std_logic_vector(4 downto 0);
 signal data_reg : std_logic_vector(7 downto 0);
 
-signal pn1, pn2: integer;
-signal cs1, cs2: integer;
-signal st1, st2: std_logic;
+signal pn: integer;
+signal cs: integer;
+signal st: std_logic;
 
 begin
 
 	p1: player port map (rst, clk, 1, load_stay, load_hit, start,
-		fin1, my_idx1, pn1, cs1, st1);
-	p2: player port map (rst, clk, 2, load_stay, load_hit, fin1,
-		fin2, my_idx2, pn2, cs2, st2);
-	my_data_gen: data_gen port map(rst, clk, my_idx, w_enable_reg,
+		fin1, my_idx, pn, cs, st);
+	my_data_gen: data_gen port map(rst, clk, my_idx, cs, w_enable_reg,
 		data_out_reg, addr_reg, data_reg);
 	my_lcd_test: lcd_test port map(rst, clk, data_out_reg, addr_reg,
 		data_reg, LCD_A, LCD_EN, LCD_D, w_enable_reg);
-		
-	process(clk)
-	begin
-		if rising_edge(clk) then
-			if fin1 = '0' then
-				my_idx <= my_idx1;
-			elsif fin1 = '1' and fin2 = '0' then
-				my_idx <= my_idx2;
-			end if;
-		end if;
-	end process;
-	
 	
 
 end Behavioral;
