@@ -2,113 +2,128 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
-
-
-entity clock is
-	port ( rst_n : in STD_LOGIC;
-				CLK : in STD_LOGIC;
-				LCD_A : out STD_LOGIC_VECTOR (1 downto 0);
-				LCD_EN : out  STD_LOGIC;
-           LCD_D : out  STD_LOGIC_VECTOR (7 downto 0);
-			  DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
-           SEG_A : out  STD_LOGIC;
-           SEG_B : out  STD_LOGIC;
-           SEG_C : out  STD_LOGIC;
-           SEG_D : out  STD_LOGIC;
-           SEG_E : out  STD_LOGIC;
-           SEG_F : out  STD_LOGIC;
-           SEG_G : out  STD_LOGIC;
-           SEG_DP : out  STD_LOGIC;
-			  CLK_2s : out STD_LOGIC;
-			  CLK_15s : out STD_LOGIC);
-end clock;
-
-architecture Behavioral of clock is
-
-	component lcd_clock
-		port(FPGA_RSTB : in  STD_LOGIC;
-           FPGA_CLK : in  STD_LOGIC;
-           LCD_A : out  STD_LOGIC_VECTOR (1 downto 0);
-           LCD_EN : out  STD_LOGIC;
-           LCD_D : out  STD_LOGIC_VECTOR (7 downto 0));
-	end component;
-	
-	component seg_clock
-		port(rst_n : in  STD_LOGIC;
-           clk : in  STD_LOGIC; -- 4MHz FPGA oscilator
-			  -- input score, sum!!!!!!!!
-           DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
-           SEG_A : out  STD_LOGIC;
-           SEG_B : out  STD_LOGIC;
-           SEG_C : out  STD_LOGIC;
-           SEG_D : out  STD_LOGIC;
-           SEG_E : out  STD_LOGIC;
-           SEG_F : out  STD_LOGIC;
-           SEG_G : out  STD_LOGIC;
-           SEG_DP : out  STD_LOGIC;
-			  CLK_2s : out STD_LOGIC;
-			  CLK_15s : out STD_LOGIC);
-	end component;
-	
-begin
-
-	lcd_clock_m: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D);
-	
-	seg_clock_m: seg_clock port map(rst_n, CLK, DIGIT, SEG_A, 
-									SEG_B, SEG_C, SEG_D, SEG_E, SEG_F,
-									SEG_G, SEG_DP, CLK_2s, CLK_15s);
-
-end Behavioral;
-
------------------------------------------------------------------------------------------
-
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.STD_LOGIC_ARITH.ALL;
-use IEEE.STD_LOGIC_UNSIGNED.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 entity seg_clock is
     Port ( rst_n : in  STD_LOGIC;
            clk : in  STD_LOGIC; -- 4MHz FPGA oscilator
-			  -- input score, sum!!!!!!!!
-           DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
-           SEG_A : out  STD_LOGIC;
-           SEG_B : out  STD_LOGIC;
-           SEG_C : out  STD_LOGIC;
-           SEG_D : out  STD_LOGIC;
-           SEG_E : out  STD_LOGIC;
-           SEG_F : out  STD_LOGIC;
-           SEG_G : out  STD_LOGIC;
-           SEG_DP : out  STD_LOGIC;
+			  CLK_14s_rst : in STD_LOGIC;
+			  CLK_1s : out STD_LOGIC;
 			  CLK_2s : out STD_LOGIC;
-			  CLK_15s : out STD_LOGIC);
+			  CLK_14s : out STD_LOGIC);
 end seg_clock;
 
 architecture Behavioral of seg_clock is
 
 signal s1_clk : std_logic; -- clock for seconds, rising/descending every 0.5sec
-signal sum10, sum01 : std_logic_vector( 3 downto 0 ); -- 현재 플레이어 카드 합
-signal score10, score01 : std_logic_vector( 3 downto 0 ); -- 현재 플레이어의 점수
+signal s2_clk, s14_clk : std_logic; -- clock for 2 / 14 seconds, rising / descending every 1sec / 7sec
+
+begin
+
+	-- clock dividing process for 1Hz digital clock
+	-- clk period: 250ns, count_clk period: 1sec
+	process(rst_n, clk)
+			-- 250 ns period -> 1/4000000
+			variable count_clk: integer range 0 to 2000000; -- flip after counting 2000000 clocks(0.5sec)
+	begin
+			if(rst_n = '0') then -- reset
+					s1_clk <= '1';
+					count_clk:= 0;
+			elsif(clk'event and clk='1') then
+					if(count_clk < 2000000) then
+							count_clk:= count_clk + 1;
+					else -- clk_1s rising/desending
+							s1_clk <= not s1_clk;
+							count_clk:= 0; -- recount
+					end if;
+			end if;
+	end process;
+	
+	-- 2sec clock, 14sec clock
+	process(rst_n, s1_clk, CLK_14s_rst)
+			variable cnt_14s : integer range 0 to 7;
+	begin
+			if(rst_n = '0') then -- reset
+					s2_clk <= '1';
+					s14_clk <= '1';
+					cnt_14s := 0;
+			elsif(CLK_14s_rst = '0') then
+					s14_clk <= '1';
+					cnt_14s := 0;
+			elsif(s1_clk'event and s1_clk='1') then -- every 1s
+					s2_clk <= not s2_clk; -- flip after 1s
+					if(cnt_14s < 7) then
+							cnt_14s := cnt_14s + 1;
+					else
+							s14_clk <= not s14_clk; -- flip after 7s
+							cnt_14s := 0;
+					end if;			
+			end if;
+	end process;
+	
+	CLK_1s <= s1_clk;
+	CLK_2s <= s2_clk;
+	CLK_14s <= s14_clk;
+	
+end Behavioral;	
+
+--segment clock 분리하기!!!!!!!!!!!!!
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity display_segment is
+    Port ( rst_n : in  STD_LOGIC;
+           clk : in  STD_LOGIC; -- 4MHz FPGA oscilator
+			  CLK_1s : in STD_LOGIC;
+			  ID : in integer;
+			  SUM1 : in integer;
+			  --SUM2 : in integer;
+			  --SUM3 : in integer;			  
+           DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
+           SEG_A : out  STD_LOGIC;
+           SEG_B : out  STD_LOGIC;
+           SEG_C : out  STD_LOGIC;
+           SEG_D : out  STD_LOGIC;
+           SEG_E : out  STD_LOGIC;
+           SEG_F : out  STD_LOGIC;
+           SEG_G : out  STD_LOGIC;
+           SEG_DP : out  STD_LOGIC);
+end display_segment;
+
+architecture Behavioral of display_segment is
+
+signal sum10, sum01 : std_logic_vector( 3 downto 0 ); -- 현재 플레이어 점수
+signal id10, id01 : std_logic_vector( 3 downto 0 ); -- 현재 플레이어의 아이디
 signal sec10_cnt, sec01_cnt : std_logic_vector( 3 downto 0 ); -- count seconds
 signal sel : std_logic_vector( 2 downto 0 ); -- 7 segment select, select DIGIT
 signal data : std_logic_vector( 3 downto 0 ); -- display value
 signal seg : std_logic_vector( 7 downto 0 ); -- 7 segment display
-signal s2_clk, s15_clk : std_logic; -- clock for 2 / 14 seconds, rising / descending every 1sec / 7sec
+signal myid, mysum1 : integer;
+--signal mysum2, mysum3 : integer;
+signal tmp : std_logic_vector(4 downto 0);
 
 begin
 
+	myid <= ID;
+	mysum1 <= SUM1;
+	--mysum2 <= SUM2;
+	--mysum3 <= SUM3;
+	
 	-- determine LED display digit by sel value
 	process(sel)
 	begin
 			case sel is
-					when "000" => DIGIT <= "000001"; -- 현재 플레이어 카드 합(tens)
+					when "000" => DIGIT <= "000001"; -- 현재 플레이어 점수(tens)
+							data <= id10;
+					--when "001" => DIGIT <= "000010"; -- 현재 플레이어 점수(units)
+							--data <= id01;
+					when "010" => DIGIT <= "000100"; -- 현재 플레이어의 아이디(tens)
 							data <= sum10;
-					when "001" => DIGIT <= "000010"; -- 현재 플레이어 카드 합(units)
+					when "011" => DIGIT <= "001000"; -- 현재 플레이어의 아이디(units)
 							data <= sum01;
-					when "010" => DIGIT <= "000100"; -- 현재 플레이어의 점수(tens)
-							data <= score10;
-					when "011" => DIGIT <= "001000"; -- 현재 플레이어의 점수(units)
-							data <= score01;
 					when "100" => DIGIT <= "010000"; -- second(tens)
 							data <= sec10_cnt;
 					when "101" => DIGIT <= "100000"; -- second(units)
@@ -168,65 +183,23 @@ begin
 	SEG_G <= seg( 6 );
 	SEG_DP <= seg( 7 );
 	
-	
-	-- clock dividing process for 1Hz digital clock
-	-- clk period: 250ns, count_clk period: 1sec
-	process(rst_n, clk)
-			-- 250 ns period -> 1/4000000
-			variable count_clk: integer range 0 to 2000000; -- flip after counting 2000000 clocks(0.5sec)
-	begin
-			if(rst_n = '0') then -- reset
-					s1_clk <= '1';
-					count_clk:= 0;
-			elsif(clk'event and clk='1') then
-					if(count_clk < 2000000) then
-							count_clk:= count_clk + 1;
-					else -- clk_1s rising/desending
-							s1_clk <= not s1_clk;
-							count_clk:= 0; -- recount
-					end if;
-			end if;
-	end process;
-	
-	-- 2sec clock, 15sec clock
-	process(rst_n, s1_clk)
-			variable cnt_15s : integer range 0 to 7;
-	begin
-			if(rst_n = '0') then -- reset
-					s2_clk <= '1';
-					s15_clk <= '1';
-					cnt_15s := 0;
-			elsif(s1_clk'event and s1_clk='1') then -- every 1s
-					s2_clk <= not s2_clk; -- flip after 1s
-					if(cnt_15s < 7) then
-							cnt_15s := cnt_15s + 1;
-					else
-							s15_clk <= not s15_clk; -- flip after 7s
-							cnt_15s := 0;
-					end if;			
-			end if;
-	end process;
-	
-	CLK_2s <= s2_clk;
-	CLK_15s <= s15_clk;
-	
-	-- count hours, minutes, seconds by rst_n, s01_clk rising
-	process(s1_clk, rst_n) -- input score, sum!!!!!!!!!!!
+	-- count seconds by rst_n, s1_clk rising
+	process(CLK_1s, rst_n)
 			variable s10_cnt, s01_cnt : STD_LOGIC_VECTOR ( 3 downto 0); -- count for second(tens, units)
 	begin
 			if(rst_n = '0') then -- 00:00:00
 					s01_cnt:= "0000"; -- '0'
 					s10_cnt:= "0000"; -- '0'
 					
-			elsif(s1_clk = '1' and s1_clk'event) then -- when s01_clk is rising
+			elsif(CLK_1s = '1' and CLK_1s'event) then -- when s01_clk is rising
 					s01_cnt:= s01_cnt + 1; -- increase second(units)
 					-- count of second(units)
 					if(s01_cnt > "1001") then -- when s01_cnt = 10, recount and increase s10_cnt
 							s01_cnt:= "0000"; -- recount
 							s10_cnt:= s10_cnt + 1; -- increase s10_cnt
 					end if;
-					-- 00:00:15
-					if(s10_cnt = "0001" and s01_cnt > "0101") then -- go back to 00:00:00
+					-- --:--:15
+					if(s10_cnt = "0001" and s01_cnt > "0100") then -- go back to --:--:00
 							s10_cnt:= "0000";
 							s01_cnt:= "0000";
 					end if;
@@ -234,302 +207,311 @@ begin
 			
 			sec01_cnt <= s01_cnt;
 			sec10_cnt <= s10_cnt;
-			score01 <= "0000"; -- input score, sum!!!!!!!!
-			score10 <= "0000";
-			sum01 <= "0000";
-			sum10 <= "0000";
 			
 	end process;
 	
-end Behavioral;
-
-
------------------------------------------------------------------------------------------
-
-
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.STD_LOGIC_ARITH.ALL;
-use IEEE.STD_LOGIC_UNSIGNED.ALL;
-
-
-entity lcd_clock is
-    Port ( FPGA_RSTB : in  STD_LOGIC;		-- reset
-           FPGA_CLK : in  STD_LOGIC;		-- FPGA clock
-           LCD_A : out  STD_LOGIC_VECTOR (1 downto 0);		-- signal RS, RW
-           LCD_EN : out  STD_LOGIC;		-- LCD enable, 1: always enable
-           LCD_D : out  STD_LOGIC_VECTOR (7 downto 0));		-- LCD data
-end lcd_clock;
-
-architecture Behavioral of lcd_clock is
-
-signal load_100k : std_logic;		-- high: clk_100k flip
-signal clk_100k : std_logic;		-- 100 KHz clock
-signal cnt_100k : std_logic_vector (7 downto 0);	-- count for load_100k, clk_100k
-signal load_50 : std_logic;	-- high: clk_50 flip
-signal clk_50 : std_logic;		-- 50 Hz clock
-signal cnt_50 : std_logic_vector (11 downto 0);	-- count for load_50, clk_50
-signal lcd_cnt : std_logic_vector (8 downto 0);	-- decide lcd_state
-signal lcd_state : std_logic_vector (7 downto 0);	-- LCD state, decide lcd_db
-signal lcd_db : std_logic_vector (7 downto 0);		-- LCD data
-
-begin
-
-	-- make 100KHz clock: 10us pulse
-	process(FPGA_RSTB, FPGA_CLK, load_100k, cnt_100k)
-		begin
-			if FPGA_RSTB = '0' then						-- reset
-					cnt_100k <= (others => '0');
-					clk_100k <= '0';
-			elsif rising_edge(FPGA_CLK) then			-- when FPGA_CLK rising
-					if load_100k = '1' then				-- when cnt_100k = 19
-							cnt_100k <= (others => '0');	-- reset
-							clk_100k <= not clk_100k;	-- flip
-					else										-- when cnt_100k < 19
-							cnt_100k <= cnt_100k + 1;	-- count
-					end if;
-			end if;
-	end process;
-	-- count 250ns pulse as 40 => count until cnt_100k = 19
-	load_100k <= '1' when (cnt_100k = X"13") else '0';		-- 19
-	
-	-- make 50Hz clock: 20ms pulse
-	process(FPGA_RSTB, clk_100k, load_50, cnt_50)
-		begin
-			if FPGA_RSTB = '0' then						-- reset
-					cnt_50 <= (others => '0');
-					clk_50 <= '0';
-			elsif rising_edge(clk_100k) then			-- when FPGA_CLK rising
-					if load_50 = '1' then				-- when cnt_50 = 999
-							cnt_50 <= (others => '0');	-- reset
-							clk_50 <= not clk_50;		-- flip
-					else										-- when cnt_50 < 999
-							cnt_50 <= cnt_50 + 1;		-- count
-					end if;
-			end if;
-	end process;
-	-- count 10us pulse(100KHz) as 2000 => count until cnt_50 = 999
-	load_50 <= '1' when (cnt_50 = X"3E7") else '0';		-- 999
-	
-	-- assign LCD state
-	process(FPGA_RSTB, clk_50, lcd_cnt)
-		begin
-			if FPGA_RSTB = '0' then						-- reset
-					lcd_cnt <= (others => '0');
-			elsif rising_edge(clk_50) then			-- when clk_50 rising
-					if (lcd_cnt >= "001010110") then	-- when lcd_cnt >= 86(random number over 72)
-							lcd_cnt <= lcd_cnt;			-- no count
-					else										-- when lcd_cnt < 86
-							lcd_cnt <= lcd_cnt + 1;		-- count
-					end if;
-			end if;
-	end process;
-	-- lcd_state = lcd_cnt * 1/2, max: 00101011(43)
-	lcd_state <= lcd_cnt(8 downto 1);
-	
-	-- set output of each output state
-	process(lcd_state, 2s,15s, what) -- total 6 instruction codes + 32 states
-		begin
-			if what=='0'
-				
-				if rising_edge(2s):
-				
-			elif what=='1'
-				if rising_edge(15s):
-				
-			case lcd_state is		-- 0~43
-					when X"00" => lcd_db <= "00111000";		-- function set
-					when X"01" => lcd_db <= "00001000";		-- display OFF
-					when X"02" => lcd_db <= "00000001";		-- display clear
-					when X"03" => lcd_db <= "00000110";		-- entry mode set
-					when X"04" => lcd_db <= "00001100";		-- display ON
-					when X"05" => lcd_db <= "00000011";		-- return home
-					when X"06" => lcd_db <= X"3C";			-- <
-					when X"07" => lcd_db <= X"33";			-- 3
-					when X"08" => lcd_db <= X"31";			-- 1
-					when X"09" => lcd_db <= X"33";			-- 3
-					when X"0A" => lcd_db <= X"36";			-- 6
-					when X"0B" => lcd_db <= X"31";			-- 1
-					when X"0C" => lcd_db <= X"34";			-- 4
-					when X"0D" => lcd_db <= X"3E";			-- >
-					when X"0E" => lcd_db <= X"3C";			-- <
-					when X"0F" => lcd_db <= X"33";			-- 3
-					when X"10" => lcd_db <= X"31";			-- 1
-					when X"11" => lcd_db <= X"30";			-- 0
-					when X"12" => lcd_db <= X"31";			-- 1
-					when X"13" => lcd_db <= X"31";			-- 1
-					when X"14" => lcd_db <= X"38";			-- 8
-					when X"15" => lcd_db <= X"3E";			-- >
-					when X"16" => lcd_db <= X"C0";			-- change line
-					when X"17" => lcd_db <= X"20";			-- space
-					when X"18" => lcd_db <= X"4B";			-- K
-					when X"19" => lcd_db <= X"20";			-- space
-					when X"1A" => lcd_db <= X"48";			-- H
-					when X"1B" => lcd_db <= X"20";			-- space
-					when X"1C" => lcd_db <= X"52";			-- R
-					when X"1D" => lcd_db <= X"21";			-- !
-					when X"1E" => lcd_db <= X"20";			-- space
-					when X"1F" => lcd_db <= X"20";			-- space
-					when X"20" => lcd_db <= X"53";			-- S
-					when X"21" => lcd_db <= X"20";			-- space
-					when X"22" => lcd_db <= X"4A";			-- J
-					when X"23" => lcd_db <= X"20";			-- space
-					when X"24" => lcd_db <= X"53";			-- S
-					when X"25" => lcd_db <= X"3F";			-- ?
-					when X"26" => lcd_db <= X"20";			-- space
-					when others => lcd_db <= (others => '0');
-			end case;
-	end process;
-	-- connect internal signal with port
-	LCD_A(1) <= '0';
-	LCD_A(0) <= '0' when 	-- LCD_A = 00(read)
-								(lcd_state >= X"00" and lcd_state < X"06")
-								or (lcd_state = X"16")		-- change line
-						else '1';		-- LCD_A = 01(write)
-	LCD_EN <= not lcd_cnt(0);
-	LCD_D <= lcd_db;
-
-end Behavioral;
-
------------------------------------------------------------------------------------------
-
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.STD_LOGIC_ARITH.ALL;
-use IEEE.STD_LOGIC_UNSIGNED.ALL;
-
-
-entity round is
-	port ( rst_n : in STD_LOGIC;
-			  CLK : in STD_LOGIC;
-			  CLK_2s : out STD_LOGIC;
-			  score : out STD_LOGIC_VECTOR ( 3 downto 0); -- 플레이어별 얻은 점수 ex) P1: 10, P2: 20
-			  
-			  );
-end round;
-
-architecture Behavioral of round is
-
-	component lcd_clock
-		port();
-	end component;
-	
-	component player
-		port();
-	end component;
-	
-	component dealer
-		port();
-	end component;
-	
-	component game
-		port();
-	end component;
-		
-		
-signal cardsum : std_logic_vector (3 downto 0);
-signal result : std_logic_vector (3 downto 0) := "0000";
-signal start : std_logic;
-signal fin : std_logic_vector (10 downto 0);
-
-begin
-
-	process(CLK_2s)
+	-- display id, sum
+	process(clk, rst_n)
+			variable sum01_cnt, sum10_cnt : STD_LOGIC_VECTOR(3 downto 0);
+			variable id10_cnt : std_logic_vector(3 downto 0);
 	begin
-		
-		p1_turn: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1", 0, start, fin(0));
-		player1 : player port map (rst_n, CLK, cardsum(0), fin(0), fin(1));
-		
-		p2_turn: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "2", fin(1), fin(2));
-		player2 : player port map (rst_n, CLK, cardsum(1), fin(2), fin(3));
-		
-		p3_turn: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "3", fin(3), fin(4));
-		player3 : player port map (rst_n, CLK, cardsum(2), fin(4), fin(5));
-		
-		dealer_turn: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "", fin(5), fin(6));
-		dealer : dealer port map (rst_n, CLK, cardsum(3), fin(6), fin(7));
-		
-		if cardsum(0) >= cardsum(3)
-			result(0)<='1';
-		if cardsum(1) >= cardsum(3)
-			result(1)<='1';
-		if cardsum(2) >= cardsum(3)
-			result(2)<='1';
+			if(rst_n = '0') then
+					id01 <= "0000";
+					sum01 <= "0000";
+					sum10 <= "0000";
+			elsif(clk = '1' and clk'event) then
+				if myid = 1 then	-- player1
+						id10_cnt:= "0001";
+						tmp <= std_logic_vector(to_unsigned(mysum1, 5));
+				else -- dealer
+						id10_cnt:= "0000";
+				--elsif myid = 2 then	-- player2
+						--id01_cnt:= "0010";
+						--tmp <= std_logic_vector(to_unsigned(mysum2, 5));
+				--else		-- player3
+						--id01_cnt:= "0011";
+						--tmp <= std_logic_vector(to_unsigned(mysum3, 5));
+				end if;
 				
-		winner: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, result, fin(7), fin(8));
-		
-		finish_round: game port map(rst_n, CLK, score, fin(8), fin(9));
-	
+				if tmp < "01010" then	-- 0s
+						sum10_cnt:= "0000";
+						sum01_cnt:= tmp(3 downto 0);
+				elsif tmp >= "01010" and tmp < "10100" then	-- 10s
+						sum10_cnt:= "0001";
+						sum01_cnt:= tmp - "01010";
+				elsif tmp >= "10100" and tmp < "11110" then	-- 20s
+						sum10_cnt:= "0010";
+						sum01_cnt:= tmp - "10100";
+				elsif tmp >= "11110" and tmp <= "11111" then
+						sum10_cnt:= "0011";
+						sum01_cnt:= tmp - "11110";
+				end if;
+				
+				--id01 <= id01_cnt;
+				id10 <= id10_cnt;
+				sum01 <= sum01_cnt;
+				sum10 <= sum10_cnt;
+			end if;
 	end process;
-	
-	
 
 end Behavioral;
 
----------------------------------------------------------------------------------------------
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.STD_LOGIC_ARITH.ALL;
-use IEEE.STD_LOGIC_UNSIGNED.ALL;
+use IEEE.math_real.all;
 
+entity player is
+	port(
+	rst : in std_logic;
+	clk : in std_logic;
+	clk_14s : in std_logic;
+	start : in std_logic;
+	load_stay : in std_logic;
+	load_hit : in std_logic;
+	total : out integer;
+	fin : out std_logic;
+	limit : out std_logic
+	);
+end player;
 
-entity game is
-	port ( rst_n : in STD_LOGIC;
-			  CLK : in STD_LOGIC;
-			  CLK_2s : out STD_LOGIC;
-			  score : out STD_LOGIC_VECTOR ( 3 downto 0); -- 플레이어별 얻은 점수 ex) P1: 10, P2: 20
-			  
-			  );
-end game;
+architecture Behavioral of player is
 
-architecture Behavioral of game is
+signal a : integer:=0;
+signal b : integer;
+signal tmp : integer;
+signal idx : integer:=0;
+signal en : std_logic:='0';
+type int_arr is array (0 to 15) of integer;
+signal card : int_arr;
+signal term : std_logic := '0';
+signal tterm : std_logic := '0';
 
-	component lcd_clock
-		port();
-	end component;
-	
-	component round
-		port();
-	end component;
+signal cardsum: integer := 0;
+signal tmpstart : std_logic;
+signal ttmpstart : std_logic :='1';
+signal my_limit: std_logic := '0';
+signal finn : std_logic:='0';
 
-signal start : std_logic;
-signal fin : std_logic_vector (10 downto 0);
-signal sentence : std_logic_vector (3 downto 0);
-signal num : std_logic_vector (3 downto 0);
-	
 begin
 
-	process(CLK_2s)
+	tmpstart <= start;
+	limit <= my_limit;
+	
+	process(clk)
 	begin
-	
-		round_turn1: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1", start, fin(0));
-		round1 : round port map (x(0), temp(0), c0, s(0), c1, fin(0), fin(1));
-		score1 : lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1", fin(0), fin(1));
-		
-		round_turn2: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1");
-		round2 : round port map (x(0), temp(0), c0, s(0), c1);
-		score2 : lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1");
-		
-		round_turn3: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1");
-		round3 : round port map (x(0), temp(0), c0, s(0), c1);
-		score3 : lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1");
-		
-		round_turn4: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1");
-		round4 : round port map (x(0), temp(0), c0, s(0), c1);
-		score4 : lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1");
-		
-		round_turn5: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1");
-		round5 : round port map (x(0), temp(0), c0, s(0), c1);
-		score5 : lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1");
-		
-		
-		winner: lcd_clock port map(rst_n, CLK, LCD_A, LCD_EN, LCD_D,  sentence, "1");
-		
-	
+		if rising_edge(clk) and en='0' then
+			a<=15*a+1;
+		end if;
 	end process;
 	
+	process(clk)
+		variable count_clk: integer range 0 to 5000000; -- flip after counting 5000000 clocks(0.5sec)
+		variable cnt: std_logic :='0';
+	begin
+		if rising_edge(clk) then
+		report "finn " & std_logic'image(finn);
+	--		if idx < 10 then
+			if tmpstart='1' and idx < 15 and ttmpstart='1' then
+				en <= '1';
+				b <= a mod 16 +1;
+				tmp <= b;
+				card(idx) <= tmp;
+				idx<=idx+1;
+				en <= '0';
+			end if;
+			if idx = 15 then
+				ttmpstart <= '0';
+				term <= '1';
+				idx <= 5;	-- index of next card
+				cardsum<=card(3)+card(4);	-- card sum of initial 2 cards
+			end if;
+	---------------------------------------------------	
+			--if term = '1' and tterm = '0' then
+			if term = '1' and cnt = '0' then
+				-- display " stay or hit? "
+				-- display card? 
+				if load_stay = '0' then -- stay
+					cnt := '1';
+					-- display stay					
+					finn <= not finn;	-- turn to next player
+			--		ttmpstart <= '0';
+					term <= '0';
+
+				elsif load_hit = '0' then -- hit
+					cnt := '1';
+					-- display hit
+					cardsum <= cardsum + card(idx);
+		--			report "The value of 'cardsum' is " & integer'image(cardsum);
+					idx <= idx + 1;
+					if cardsum > 21 then	-- burst
+						-- display burst
+						term <= '0';
+						finn <= not finn;
+			--			ttmpstart <= '0';
+					end if;
+				end if;
+			end if;
+			
+			if(count_clk < 5000000) then
+					count_clk:= count_clk + 1;
+			else -- clk_1s rising/desending
+					cnt := not cnt;
+					count_clk:= 0; -- recount
+			end if;
+						
+		end if;
+	end process;
 	
+--	process(clk_14s) -- 14초과
+	--begin
+		--if rising_edge(clk_14s) then
+			--if load_stay='0' and load_hit='0' and term='1' then
+				--my_limit <= '1';
+--				tterm <= '1';
+	--			fin <= '1';
+		--	end if;
+--		end if;	
+	--end process;
+	
+	total <= cardsum;
+	fin <= finn;
 
 end Behavioral;
 
+-------------------------------------------
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity blackjack is
+	port(
+		rst : in std_logic;
+		clk : in std_logic;
+		load_stay : in std_logic;
+		load_hit : in std_logic;
+		DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
+		SEG_A : out  STD_LOGIC;
+		SEG_B : out  STD_LOGIC;
+		SEG_C : out  STD_LOGIC;
+		SEG_D : out  STD_LOGIC;
+		SEG_E : out  STD_LOGIC;
+		SEG_F : out  STD_LOGIC;
+		SEG_G : out  STD_LOGIC;
+		SEG_DP : out  STD_LOGIC;
+		fin : out std_logic
+		);
+end blackjack;
+
+architecture Behavioral of blackjack is
+
+component seg_clock is
+	port(
+	rst_n : in  STD_LOGIC;
+   clk : in  STD_LOGIC; -- 4MHz FPGA oscilator
+	CLK_14s_rst : in STD_LOGIC;
+   CLK_1s : out STD_LOGIC;
+   CLK_2s : out STD_LOGIC;
+   CLK_14s : out STD_LOGIC
+	);
+end component;
+
+component player is
+	port(
+	rst : in std_logic;
+	clk : in std_logic;
+	clk_14s : in std_logic;
+	start : in std_logic;
+	load_stay : in std_logic;
+	load_hit : in std_logic;
+	total : out integer;
+	fin : out std_logic;
+	limit : out std_logic
+	);
+end component;
+
+component display_segment is
+	port(
+	rst_n : in  STD_LOGIC;
+   clk : in  STD_LOGIC; -- 4MHz FPGA oscilator
+   CLK_1s : in STD_LOGIC;
+   ID : in integer;
+   SUM1 : in integer;
+	--SUM2 : in integer;
+	--SUM3 : in integer;		
+   DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
+   SEG_A : out  STD_LOGIC;
+   SEG_B : out  STD_LOGIC;
+   SEG_C : out  STD_LOGIC;
+   SEG_D : out  STD_LOGIC;
+   SEG_E : out  STD_LOGIC;
+   SEG_F : out  STD_LOGIC;
+   SEG_G : out  STD_LOGIC;
+   SEG_DP : out  STD_LOGIC
+	);
+end component;
+
+signal fin1: std_logic;
+--signal fin2: std_logic;
+--signal fin3: std_logic;
+signal r1 : integer;
+--signal r2, r3 : integer;
+signal sum1 : integer;
+--sum2,sum3 : integer; -- card sum
+signal limitt1 : std_logic;
+--signal limitt2, limitt3: std_logic;
+signal s1_clk, s2_clk, s14_clk : std_logic;
+signal s14_clk_rst : std_logic := '1';
+signal seg_digit : std_logic_vector(6 downto 1);
+signal a, b, c, d, e, f, g, dp  : std_logic;
+signal id : integer := 1;
+signal sum11 : integer :=0;
+--signal sum22 : integer :=0;
+--signal sum33 : integer :=0;
+
+type int_arr2 is array (0 to 30) of integer;
+signal ttmp : int_arr2;
+
+begin
+
+	process(clk)
+	begin
+		if (clk'event and clk='1') then
+			id <= 1;
+			if(fin1 = '1') then
+				id <= 0;
+			--if (fin1 = '1' and fin2 = '0') then
+				--id <= 2;
+			--elsif (fin1 = '1' and fin2 = '1') then
+				--id <= 3;
+			end if;
+		end if;
+	end process;
+	
+	clock : seg_clock port map(rst, clk, s14_clk_rst, s1_clk, s2_clk, s14_clk);
+
+	p1 : player port map(rst, clk, s14_clk, '1', '0', load_hit,sum1,fin1, limitt1);
+	--p2 : player port map(rst, clk, s14_clk, fin1, load_stay, load_hit,sum2,fin2, limitt2);
+	--p3 : player port map(rst, clk, s14_clk, fin2,load_stay, load_hit, sum3,fin3, limitt3);
+	
+	seg: display_segment port map(rst, clk, s1_clk, id, sum11, seg_digit, a, b, c, d, e, f, g, dp);
+	--seg: display_segment port map(rst, clk, s1_clk, id, sum11, sum22, sum33, seg_digit, a, b, c, d, e, f, g, dp);
+	
+	sum11 <= sum1;
+	--sum22 <= sum2;
+	--sum33 <= sum3;
+	
+	DIGIT<=seg_digit;
+	SEG_A<=a;
+	SEG_B<=b;
+	SEG_C<=c;
+	SEG_D<=d;
+	SEG_E<=e;
+	SEG_F<=f;
+	SEG_G<=g;
+	SEG_DP<=dp;
+	
+	--fin <= fin1;
+	
+end Behavioral;
