@@ -13,6 +13,9 @@ entity data_gen is
 		clk: in std_logic;
 		idx: in integer;
 		hand: in int_arr;
+		player_sum: in integer;
+		dealer_sum: in integer;
+		winner: in integer;
 		w_enable: in std_logic;
 		data_out: out std_logic;
 		addr: out std_logic_vector (4 downto 0);
@@ -55,7 +58,7 @@ begin
 					reg_file(i) <= reg_buf_0(i);
 				end loop;
 			elsif my_idx = 1 then
-				for i in 0 to 31 loop
+				for i in 0 to 22 loop
 					reg_file(i) <= reg_buf_1(i);
 				end loop;
 				reg_file(23) <= hand_ascii(0);
@@ -72,7 +75,7 @@ begin
 					reg_file(i) <= reg_buf_2(i);
 				end loop;
 			elsif my_idx = 3 then
-				for i in 0 to 31 loop
+				for i in 0 to 22 loop
 					reg_file(i) <= reg_buf_3(i);
 				end loop;
 				reg_file(23) <= hand_ascii(0);
@@ -108,6 +111,34 @@ begin
 				for i in 0 to 31 loop
 					reg_file(i) <= reg_buf_9(i);
 				end loop;
+				if player_sum < 10 then
+               reg_file(18) <= X"30";
+               reg_file(19) <= X"30" + std_logic_vector(to_unsigned(player_sum, 5));
+            elsif player_sum < 20 then
+               reg_file(18) <= X"31";
+               reg_file(19) <= X"30" + std_logic_vector(to_unsigned(player_sum - 10, 5));
+            else
+               reg_file(18) <= X"32";
+               reg_file(19) <= X"30" + std_logic_vector(to_unsigned(player_sum - 20, 5));
+            end if;
+            
+            if dealer_sum < 10 then
+               reg_file(23) <= X"30";
+               reg_file(24) <= X"30" + std_logic_vector(to_unsigned(dealer_sum, 5));
+            elsif dealer_sum < 20 then
+               reg_file(23) <= X"31";
+               reg_file(24) <= X"30" + std_logic_vector(to_unsigned(dealer_sum - 10, 5));
+            else
+               reg_file(23) <= X"32";
+               reg_file(24) <= X"30" + std_logic_vector(to_unsigned(dealer_sum - 20, 5));
+            end if;
+            
+            if winner = 0 then      -- Dealer win
+               reg_file(26) <= X"44";
+            elsif winner = 1 then   -- Player win
+               reg_file(26) <= X"50";
+            end if;
+				
 			end if;
 		end if;
 	end process;
@@ -350,7 +381,6 @@ entity player is
 		ncard: out integer;
 		playersum: out integer;
 		dealersum: out integer;
-		
 		id: out integer;	-- 0 for Dealer, 1 for Player
 		winner: out integer;	-- 0 for Dealer, 1 for Player
 		clk_14s_sec: out std_logic );
@@ -362,7 +392,7 @@ signal make_random: std_logic := '1';
 signal rand_data, rand_data_d: integer := 0;
 signal init_set: std_logic := '0';
 signal card, card_d: int_arr;
-signal my_hand: int_arr;
+signal my_hand: int_arr := (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 signal cur_idx, cur_idx_d: integer := 0;
 signal cardsum, cardsum_d: integer := 0;
 signal cardnum: integer := 0;
@@ -373,7 +403,6 @@ signal fin, fin1, fin2, fin4: std_logic := '0';
 signal fin3, fin5: std_logic := '1';
 signal s14_clk: std_logic;
 signal my_id: integer := 1;
-signal cardsum_tmp: integer := 0;
 
 begin
 
@@ -404,10 +433,9 @@ begin
 		variable count_clk2 : integer range 0 to 10000000;
 		variable cnt2: std_logic :='0';
 		variable cnt2_tmp: std_logic :='1';
+		variable cardsum_tmp: integer := 0;
 	begin
 		if rising_edge(clk) then
-		report "turn: " & std_logic'image(turn);
-		report "fin: " & std_logic'image(fin);
 			-- Make random card deck
 			if turn = '1' and init_set  = '0' and idx < 15 then
 				make_random <= '0';
@@ -471,31 +499,43 @@ begin
 				if cnt2_tmp = '1' then
 					cnt2 := '1';
 				end if;
-				cnt2_tmp := '0';
 				count_clk2 := 0;
 				-- Dealer hit
 				if cardsum_d <= 16 then -- hit
-					cardsum_tmp <= cardsum_d;
-					cardsum_tmp <= cardsum_tmp + card_d(cur_idx_d);
-					if cur_idx_d < 15 then
-						cur_idx_d <= cur_idx_d + 1;
-					end if;
-					
-					-- Hit & Not burst
-					if cardsum_tmp < 21 then
-						change_sen_idx <= 7;
-						if cnt2 = '0' then
-							cardsum_d <= cardsum_tmp;
+					report "Dealer's hit";
+					if cnt2_tmp = '1' then
+						cardsum_tmp := cardsum_d + card_d(cur_idx_d);
+						if cur_idx_d < 15 then
+							cur_idx_d <= cur_idx_d + 1;
 						end if;
 					end if;
+					cnt2_tmp := '0';
+					change_sen_idx <= 7;
+					if cnt2 = '0' then
+						cardsum_d <= cardsum_tmp;
+						cnt2_tmp := '1';
+					end if;
+					if cardsum_d <= 16 then
+						cnt2 := '1';
+					else
+						cnt2 := '0';
+					end if;
+					
 				-- Dealer stay
 				else	-- stay
+					report "Dealer's stay";
 					change_sen_idx <= 6;
-					fin3 <= '0';	-- FIN.
+					cnt2_tmp := '0';
+					if cnt2 = '0' then
+						report "go to game over";
+						cnt2 := '1';
+						fin3 <= '0';	-- FIN.
+					end if;
 				end if;
 			
 			-- Game over
-			elsif turn = '0' and fin = '0' then
+			elsif turn = '0' and fin = '0' and cnt2 = '0' then
+			report "gameover";
 				change_sen_idx <= 9;
 				-- Player burst
 				if cardsum > 21 then
@@ -523,7 +563,7 @@ begin
                count_clk:= 0; -- recount
          end if;
 			
-			if count_clk2 < 10000000 then -- 10000000
+			if count_clk2 < 1000 then -- 10000000
                count_clk2:= count_clk2 + 1;
          else -- clk_1s rising/desending
                cnt2 := not cnt2;
@@ -578,30 +618,21 @@ begin
 			if fin2 = '1' then
 				fin <= '1';
 			end if;
-			
-			if fin3 = '0' then
-				fin <= '0';
-			end if;
-			
-			if turn1 = '0' or turn2 = '0' then
-				turn <= '0';
-			end if;
-			
 			if fin4 = '1' then
 				fin <= '1';
 			end if;
-			
+			if fin3 = '0' then
+				fin <= '0';
+			end if;
+			if turn1 = '0' or turn2 = '0' then
+				turn <= '0';
+			end if;
 			if fin5 = '0' then
 				fin <= '0';
 			end if;
-			
 			if turn4 = '0' then
 				turn <= '0';
 			end if;
-			
-			
-			
-			
 		end if;
 	end process;
 	
@@ -925,6 +956,9 @@ component data_gen is
 		clk: in std_logic;
 		idx: in integer;
 		hand: in int_arr;
+		player_sum: in integer;
+		dealer_sum: in integer;
+		winner: in integer;
 		w_enable: in std_logic;
 		data_out: out std_logic;
 		addr: out std_logic_vector (4 downto 0);
@@ -1023,8 +1057,8 @@ begin
 	
 	my_player: player port map (rst, clk, load_stay, load_hit, s1_clk, s2_clk, s4_clk,
 		my_sen_idx, my_hand, my_ncard, my_playersum, my_dealersum, my_id, my_winner, my_clk_14s_sec);
-		
-	my_data_gen: data_gen port map(rst, clk, my_sen_idx, my_hand, w_enable_reg,
+		 
+	my_data_gen: data_gen port map(rst, clk, my_sen_idx, my_hand, my_playersum, my_dealersum, my_winner, w_enable_reg,
 		data_out_reg, addr_reg, data_reg);
 		
 	my_lcd_test: lcd_test port map(rst, clk, data_out_reg, addr_reg,
