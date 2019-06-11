@@ -464,10 +464,7 @@ begin
 			if turn = '1' and init_set  = '0' and idx < 15 and cnt='1' then
 				make_random <= '0';
 				card(idx) <= rand_data mod 8 + 1;
-		--		card_d(idx) <= rand_data_d mod 8 + 1;
-				card_d(idx) <= 8;
-		--		card(idx) <= 6;
-		--		card_d(idx) <= 6;
+				card_d(idx) <= rand_data_d mod 8 + 1;
 				idx := idx + 1;
 				make_random <= '1';
 			
