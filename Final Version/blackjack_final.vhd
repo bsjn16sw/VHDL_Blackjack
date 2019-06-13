@@ -1,4 +1,4 @@
--------------DATA_GEN-------------
+------------------DATA_GEN------------------
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -28,7 +28,7 @@ signal reg_file: reg;
 
 signal cnt : std_logic_vector(4 downto 0);
 signal my_idx: integer;
-signal hand_ascii: reg :=
+signal hand_ascii: reg :=	 -- To display player's card in his hand (First initialized with white-space)
 	(X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20",
 	 X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20", X"20");
 
@@ -36,6 +36,7 @@ begin
 
 	my_idx <= idx;
 	
+	-- Revise hand_ascii(i) with hand(i)
 	hand_ascii(0) <= X"20" when hand(0) = 0 else X"30" + std_logic_vector(to_unsigned(hand(0), 8));
    hand_ascii(1) <= X"20" when hand(1) = 0 else X"30" + std_logic_vector(to_unsigned(hand(1), 8));
    hand_ascii(2) <= X"20" when hand(2) = 0 else X"30" + std_logic_vector(to_unsigned(hand(2), 8));
@@ -46,6 +47,8 @@ begin
    hand_ascii(7) <= X"20" when hand(7) = 0 else X"30" + std_logic_vector(to_unsigned(hand(7), 8));
    hand_ascii(8) <= X"20" when hand(8) = 0 else X"30" + std_logic_vector(to_unsigned(hand(8), 8));
 
+	-- Process 1: Make reg_file according to my_idx
+	-- e.g. my_idx is i then copy reg_buf_i to reg_file
 	process(rst, clk)
 	begin
 		if rst = '0' then
@@ -61,6 +64,7 @@ begin
 				for i in 0 to 22 loop
 					reg_file(i) <= reg_buf_1(i);
 				end loop;
+				-- Represent cards
 				reg_file(23) <= hand_ascii(0);
 				reg_file(24) <= hand_ascii(1);
 				reg_file(25) <= hand_ascii(2);
@@ -78,6 +82,7 @@ begin
 				for i in 0 to 22 loop
 					reg_file(i) <= reg_buf_3(i);
 				end loop;
+				-- Represent cards
 				reg_file(23) <= hand_ascii(0);
 				reg_file(24) <= hand_ascii(1);
 				reg_file(25) <= hand_ascii(2);
@@ -111,40 +116,44 @@ begin
 				for i in 0 to 31 loop
 					reg_file(i) <= reg_buf_9(i);
 				end loop;
-				if player_sum < 10 then
+				
+				-- Represent sum of player's card
+				if player_sum < 10 then	-- 0 ~ 9
                reg_file(18) <= X"30";
                reg_file(19) <= X"30" + std_logic_vector(to_unsigned(player_sum, 5));
-            elsif player_sum < 20 then
+            elsif player_sum < 20 then	-- 10 ~ 19
                reg_file(18) <= X"31";
                reg_file(19) <= X"30" + std_logic_vector(to_unsigned(player_sum - 10, 5));
-            elsif player_sum < 30 then
+            elsif player_sum < 30 then	-- 20 ~ 29
                reg_file(18) <= X"32";
                reg_file(19) <= X"30" + std_logic_vector(to_unsigned(player_sum - 20, 5));
-				elsif player_sum < 40 then
+				elsif player_sum < 40 then	-- 30 ~ 39
                reg_file(18) <= X"33";
                reg_file(19) <= X"30" + std_logic_vector(to_unsigned(player_sum - 30, 5));
-				else
+				else	-- 40 ~
 					reg_file(18) <= X"34";
                reg_file(19) <= X"30" + std_logic_vector(to_unsigned(player_sum - 40, 5));
             end if;
             
-            if dealer_sum < 10 then
+				-- Represent sum of dealer's card
+            if dealer_sum < 10 then	-- 0 ~ 9
                reg_file(23) <= X"30";
                reg_file(24) <= X"30" + std_logic_vector(to_unsigned(dealer_sum, 5));
-            elsif dealer_sum < 20 then
+            elsif dealer_sum < 20 then	-- 10 ~ 19
                reg_file(23) <= X"31";
                reg_file(24) <= X"30" + std_logic_vector(to_unsigned(dealer_sum - 10, 5));
-            elsif dealer_sum < 30 then
+            elsif dealer_sum < 30 then	-- 20 ~ 29
                reg_file(23) <= X"32";
                reg_file(24) <= X"30" + std_logic_vector(to_unsigned(dealer_sum - 20, 5));
-				elsif dealer_sum < 40 then
+				elsif dealer_sum < 40 then	-- 30 ~ 39
                reg_file(23) <= X"33";
                reg_file(24) <= X"30" + std_logic_vector(to_unsigned(dealer_sum - 30, 5));
-				else
+				else	-- 40 ~
 					reg_file(23) <= X"34";
                reg_file(24) <= X"30" + std_logic_vector(to_unsigned(dealer_sum - 40, 5));
             end if;
             
+				-- Represent winner
             if winner = 0 then      -- Dealer win
                reg_file(26) <= X"44";
             elsif winner = 1 then   -- Player win
@@ -155,6 +164,7 @@ begin
 		end if;
 	end process;
 	
+	-- Process 2: Set out ports which will be delivered to lcd_test
 	process(rst, clk)
 	begin
 		if rst = '0' then
@@ -178,7 +188,7 @@ begin
 
 end Behavioral;
 
--------------LCD_TEST-------------
+------------------LCD_TEST------------------
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -210,7 +220,7 @@ signal w_enable_reg: STD_LOGIC;
 
 begin
 	
-	-- 1. Clock generator (100KHz)
+	-- Process 1: Clock generator (100KHz)
 	process(rst, clk, load_100k, cnt_100k)
 	begin
 		if rst = '0' then
@@ -228,7 +238,7 @@ begin
 	
 	load_100k <= '1' when (cnt_100k = X"13") else '0';
 	
-	-- 2. Clock generator (50Hz)
+	-- Process 2: Clock generator (50Hz)
 	process(rst, clk_100k, load_50, cnt_50)
 	begin
 		if rst = '0' then
@@ -246,7 +256,7 @@ begin
 	
 	load_50 <= '1' when (cnt_50 = X"3E7") else '0';
 	
-	-- 3. Assign lcd_state
+	-- Process 3: Assign lcd_state
 	process(rst, clk_50)
 	begin
 		if rst = '0' then
@@ -258,7 +268,7 @@ begin
 	
 	w_enable_reg <= '0' when lcd_state < X"06" else '1';
 	
-	-- 4. Assign reg_file
+	-- Process 4: Assign reg_file
 	process(rst, clk)
 	begin
 		if rst = '0' then
@@ -272,7 +282,7 @@ begin
 		end if;
 	end process;
 	
-	-- 5. Display LCD
+	-- Process 5: Display LCD
 	process(rst, lcd_state)
 	begin
 		if rst = '0' then
@@ -362,6 +372,7 @@ begin
 		end if;
 	end process;
 	
+	-- Set out ports
 	LCD_A(1) <= '0';
 	LCD_A(0) <= '0' when (lcd_state >= X"00" and lcd_state < X"06") or
 		(lcd_state = X"16") else '1';
@@ -374,7 +385,7 @@ begin
 end Behavioral;
 
 
------------------------------------------------------------------------
+-------------------PLAYER-------------------
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -430,6 +441,7 @@ begin
 	playersum <= cardsum;
 	dealersum <= cardsum_d;
 	
+	-- Process 1: Increase randrand while load_random is '0'
 	process(clk)
 	begin
 		if rising_edge(clk) then
@@ -439,7 +451,7 @@ begin
 		end if;
 	end process;
 
-	-- Make random data
+	-- Process 2: Make random data
 	process(clk)
 	begin
 		if rising_edge(clk) then
@@ -450,6 +462,7 @@ begin
 		end if;
 	end process;
 	
+	-- Process 3: Game is in progress
 	process(clk, turn, init_set, load_stay, load_hit, fin)
 		variable idx: integer := 0;
 		variable count_clk: integer range 0 to 20000000;
@@ -460,53 +473,56 @@ begin
 		variable cardsum_tmp: integer := 0;
 	begin
 		if rising_edge(clk) then
-			-- Make random card deck
-			if turn = '1' and init_set  = '0' and idx < 15 and cnt='1' then
+			-- Make random card decks of player and dealer using Process 1 and 2
+			-- Range of random value is [1, 8]
+			if turn = '1' and init_set  = '0' and idx < 15 and cnt = '1' then
 				make_random <= '0';
 				card(idx) <= rand_data mod 8 + 1;
 				card_d(idx) <= rand_data_d mod 8 + 1;
 				idx := idx + 1;
 				make_random <= '1';
 			
-			-- Initial card draw (Player: 2 cards, Dealer: 1 card)
+			-- Initial cards draw after making card decks
+			-- Player draws 2 cards and dealer draws 1 card initially
 			elsif turn = '1' and init_set = '0' and idx = 15 then
-				report "card setting";
-				init_set <= '1';
-				my_hand(0) <= card(3);
-				my_hand(1) <= card(4);
-				cur_idx <= 5;
-				cur_idx_d <= 4;
-				cardsum <= card(3) + card(4);
-				cardsum_d <= card_d(3);
-				cardnum <= 2;
-				idx := idx + 1;
+				my_hand(0) <= card(3);	-- 1st card for player
+				my_hand(1) <= card(4);	-- 2nd card for player
+				cardsum <= card(3) + card(4);	-- Sum of two cards
+				cur_idx <= 5;				-- Idx of player's next card
+				cardnum <= 2;				-- Current # of cards
+				
+				cardsum_d <= card_d(3);	-- Sum of one card for dealer
+				cur_idx_d <= 4;			-- Idx of dealer's next card
+				
+				idx := idx + 1;			-- Not to enter this elsif again
+				init_set <= '1';			-- Mark initial card draw is done
 				limit <= '1';
 			
-			-- Get button input
+			-- Get button input when player's turn is in progress and
+			-- initial card draw is done
 			elsif turn = '1' and init_set = '1' and cnt = '0' then
 				limit <= '0';
-				-- Stay
+				
+				-- When 'Stay' button is pushed
 				if load_stay = '0' then
-				report "You chose stay";
-					change_sen_idx <= 2;
-					turn1 <= '0';
-					fin1 <= '1';
+					change_sen_idx <= 2;	-- Mark that it's time to change sen_idx to 2
+					turn1 <= '0';	-- Player's turn is done
+					fin1 <= '1';	-- Dealer's turn has to be started
 					cnt := '1';
 					count_clk := 0;
 					count_clk2 := 0;
 					cnt2 := '1';
 					limit <= '1';
 					
-				-- Hit
+				-- When 'Hit' button is pushed
 				elsif load_hit = '0' then
-				report "You chose Hit ";
-					my_hand(cardnum) <= card(cur_idx);
-					cardsum <= cardsum + card(cur_idx);
+					my_hand(cardnum) <= card(cur_idx);	-- Get next card
+					cardsum <= cardsum + card(cur_idx);	-- Calculate cardsum again
 					if cardnum < 15 then
-						cardnum <= cardnum + 1;
+						cardnum <= cardnum + 1;	-- Accumulate cardnum by 1
 					end if;
 					if cur_idx < 15 then
-						cur_idx <= cur_idx + 1;
+						cur_idx <= cur_idx + 1;	-- Increase cur_idx by 1
 					end if;
 					cnt := '1';
 					count_clk := 0;
@@ -514,66 +530,78 @@ begin
 					cnt2 := '1';
 					limit <= '1';
 					
-					-- Hit & Not burst
-					if cardsum <= 21 then
-						change_sen_idx <= 3;
+					-- Check if player got bursted
+					if cardsum <= 21 then	-- 'Hit' but NOT bursted
+						change_sen_idx <= 3;	-- Mark that it's time to change sen_idx to 3
 					end if;
 				end if;
 			
-			-- Dealer
+			-- Go on dealer's turn when player's turn is done and
+			-- signal fin marked that dealer's turn can be started
 			elsif turn = '0' and fin = '1' and cnt2 = '0' then
-			report "Dealer's turn";
-				my_id <= 0;
+				my_id <= 0;		-- Dealer's ID is 0
+				
 				if cnt2_tmp = '1' then
 					cnt2 := '1';
 				end if;
 				count_clk2 := 0;
-				-- Dealer hit
-				if cardsum_d <= 16 then -- hit
-					report "Dealer's hit";
+				
+				-- Dealer select 'Hit' automatically when current sum is
+				-- same or lower than 16
+				if cardsum_d <= 16 then
+					--
 					if cnt2_tmp = '1' then
-						cardsum_tmp := cardsum_d + card_d(cur_idx_d);
+						cardsum_tmp := cardsum_d + card_d(cur_idx_d);	-- Calculate cardsum_d again
 						if cur_idx_d < 15 then
-							cur_idx_d <= cur_idx_d + 1;
+							cur_idx_d <= cur_idx_d + 1;	-- Increase cur_idx_d by 1
 						end if;
 					end if;
 					cnt2_tmp := '0';
-					change_sen_idx <= 7;
+					
+					change_sen_idx <= 7;	-- Mark that it's time to change sen_idx to 7
+					
 					if cnt2 = '0' then
 						cardsum_d <= cardsum_tmp;
 						cnt2_tmp := '1';
 					end if;
+					
 					if cardsum_d <= 16 then
 						cnt2 := '1';
 					else
 						cnt2 := '0';
 					end if;
 					
-				-- Dealer stay
-				else	-- stay
-					report "Dealer's stay";
-					change_sen_idx <= 6;
+				-- Dealer select 'Stay' automatically when current sum is
+				-- bigger than 16
+				else
+					change_sen_idx <= 6;	-- Mark that it's time to change sen_idx to 6
 					cnt2_tmp := '0';
-					if cnt2 = '0' then
-						report "go to game over";
+					if cnt2 = '0' then	-- Go to Game over
 						cnt2 := '1';
-						fin3 <= '0';	-- FIN.
+						fin3 <= '0';
 					end if;
 				end if;
 			
-			-- Game over
+			-- Game over since player's turn and dealer's turn are both done
 			elsif turn = '0' and fin = '0' and cnt2 = '0' then
-			report "gameover";
-				change_sen_idx <= 9;
-				-- Player burst
+				change_sen_idx <= 9;	-- Mark that it's time to change sen_idx to 9
+				
+				-- Determine winner (0 for dealer and 1 for player)
+				-- 1) Player got bursted
 				if cardsum > 21 then
-					winner <= 0;	-- Dealer win
-				-- Player not burst
+					winner <= 0;		-- Dealer win
+
+				-- 2) Player got not bursted
 				else
+					-- 2-1) Dealer got bursted
 					if cardsum_d > 21 then
 						winner <= 1;	-- Player win
+					-- 2-2) Dealer got not bursted and
+					-- cardsum is bigger than cardsum_d
 					elsif cardsum > cardsum_d then
 						winner <= 1;	-- Player win
+					-- 2-3) Dealer got not bursted and
+					-- cardsum_d is same or bigger than cardsum
 					else
 						winner <= 0;	-- Dealer win
 					end if;
@@ -596,16 +624,75 @@ begin
 		end if;
 	end process;
 	
+	-- Process 4: 14s Timer (Reset timer when limit is '1')
+	process(rst, s1_clk, limit)
+			variable cnt_14s : integer range 0 to 7;
+	begin
+			if rst = '0' or limit = '1' then -- Reset
+					s14_clk <= '1';
+					cnt_14s := 0;
+
+			elsif s1_clk'event and s1_clk = '1' then -- In every 1s
+					if cnt_14s < 7 then
+							cnt_14s := cnt_14s + 1;
+					else
+							s14_clk <= not s14_clk; -- Flip after 7s
+							cnt_14s := 0;
+					end if;
+			end if;
+	end process;
+	
+	-- Process 5: 14s Timeout in player's turn
+	process(rst, s14_clk)
+	begin
+		if rising_edge(s14_clk) then
+			if limit = '0' then
+				change_sen_idx2 <= 5;
+				timeout <= '1';
+			end if;
+		end if;
+	end process;
+	
+	-- Process 6:
+	process(rst, clk)		
+		variable count_clk : integer range 0 to 10000000;
+		variable cnt: std_logic := '0';
+		variable cnt_tmp: std_logic := '0';
+	begin
+		if rising_edge(clk) then
+			if timeout = '1' and cnt = '0' then
+				if cnt_tmp = '0' then
+					cnt := '1';
+					count_clk := 0;
+					cnt_tmp := '1';
+				else
+					fin2 <= '1';
+					turn2 <= '0';
+				end if;
+			end if;
+			
+			if count_clk < 10000000 then -- 10000000
+				count_clk:= count_clk + 1;
+			else
+				cnt := not cnt;
+				count_clk:= 0; -- recount
+			end if;
+		end if;
+	end process;
+	
+	-- Process 7: Control timing to display LCD
+	-- when player of dealer got bursted
 	process(clk)
       variable count_clk : integer range 0 to 10000000;
       variable cnt: std_logic :='0';
       variable cnt_tmp: std_logic := '0';
    begin
       if rising_edge(clk) then
-         --player burst
+         -- Player got bursted when player's turn is in progress,
+			-- initial card draw is done and cardsum is bigger than 21
          if turn = '1' and init_set = '1' then
             if cardsum > 21 then
-               change_sen_idx4 <= 4;
+               change_sen_idx4 <= 4;	-- Mark it's time to change sen_idx to 4
                if fin4 = '0' then
                   count_clk := 0;
                   cnt := '0';
@@ -615,16 +702,19 @@ begin
                   turn4 <= '0';
                end if;
             end if;
-         --dealer burst
+				
+         -- Dealer got bursted when dealer's turn is in progress,
+			-- signal fin marked that dealer's turn can be started and
+			-- cardsum_d is bigger than 21
          elsif turn = '0' and fin = '1' then
             if cardsum_d > 21 then
-               change_sen_idx4 <= 8;
+               change_sen_idx4 <= 8;	-- Mark it's time to change sen_idx to 8
                if cnt_tmp = '0' then
                   cnt := '1';
                   cnt_tmp := '1';
                end if;
                if cnt = '0' then
-                  fin5 <= '0';   -- FIN.
+                  fin5 <= '0';
                end if;
             end if;
          end if;
@@ -639,7 +729,9 @@ begin
       end if;
    end process;
 	
-	-- Change fin, turn
+	-- Process 8: Change fin and turn by their families
+	-- There are fin and turn families to change fin and turn
+	-- in several processes and this is violated by VHDL syntax
 	process(clk)
 	begin
 		if rising_edge(clk) then
@@ -667,63 +759,8 @@ begin
 		end if;
 	end process;
 	
-	
-	-- 14s Time timer (Reset timer when limit is '1')
-	process(rst, s1_clk, limit)
-			variable cnt_14s : integer range 0 to 7;
-	begin
-			if rst = '0' or limit = '1' then -- reset
-					s14_clk <= '1';
-					cnt_14s := 0;
-
-			elsif s1_clk'event and s1_clk = '1' then -- every 1s
-					if cnt_14s < 7 then
-							cnt_14s := cnt_14s + 1;
-					else
-							s14_clk <= not s14_clk; -- flip after 7s
-							cnt_14s := 0;
-					end if;
-			end if;
-	end process;
-	
-	-- 14s Timeout
-	process(rst, s14_clk)
-	begin
-		if rising_edge(s14_clk) then
-			if limit = '0' then
-				change_sen_idx2 <= 5;
-				timeout <= '1';
-			end if;
-		end if;
-	end process;
-	
-	process(rst, clk)		
-		variable count_clk : integer range 0 to 10000000;
-		variable cnt: std_logic := '0';
-		variable cnt_tmp: std_logic := '0';
-	begin
-		if rising_edge(clk) then
-			if timeout = '1' and cnt = '0' then
-				if cnt_tmp = '0' then
-					cnt := '1';
-					count_clk := 0;
-					cnt_tmp := '1';
-				else
-					fin2 <= '1';
-					turn2 <= '0';
-				end if;
-			end if;
-			
-			if count_clk < 10000000 then -- 10000000
-				count_clk:= count_clk + 1;
-			else
-				cnt := not cnt;
-				count_clk:= 0; -- recount
-			end if;
-		end if;
-	end process;
-	
-	-- LCD sen_idx
+	-- Process 9: Send signal to change sen_idx
+	-- for first two sentences (Each sentence is displayed for 4 sec)
    process(s4_clk)
    begin
       if rising_edge(s4_clk) then
@@ -733,45 +770,48 @@ begin
       end if;
    end process;
    
+	-- Process 10: Change m_sen_idx by their familes
+	-- There are change_sen_idx family to change m_sen_idx
+	-- in several processes and this is violated by VHDL syntax
    process(clk)
    begin
       if rising_edge(clk) then
-         if change_sen_idx0 = 1 then -- stay or hit
-            m_sen_idx <= 1;
+         if change_sen_idx0 = 1 then
+            m_sen_idx <= 1;	-- "Stay or hit? / Cards: "
          end if;
          
-         if change_sen_idx = 2 then -- stay -> dealer
-            m_sen_idx <= 2;
-         elsif change_sen_idx = 3 then -- hit -> re get
-            m_sen_idx <= 3;
+         if change_sen_idx = 2 then
+            m_sen_idx <= 2;	-- "You chose stay / Turn to dealer"
+         elsif change_sen_idx = 3 then
+            m_sen_idx <= 3;	-- "You chose hit / Cards: "
 			end if;
 			
-         if change_sen_idx4 = 4 then -- hit -> burst -> dealer
-            m_sen_idx <= 4;
+         if change_sen_idx4 = 4 then
+            m_sen_idx <= 4;	-- "You chose hit / But bursted..."
 			end if;
 			
-			if change_sen_idx2 = 5 then -- 15sec -> dealer
-            m_sen_idx <= 5;
+			if change_sen_idx2 = 5 then
+            m_sen_idx <= 5;	-- "14sec is over / Turn to dealer"
          end if;
 			
-         if change_sen_idx = 6 then -- dealer -> stay
-            m_sen_idx <= 6;
-         elsif change_sen_idx = 7 then -- dealer -> hit
-            m_sen_idx <= 7;
+         if change_sen_idx = 6 then
+            m_sen_idx <= 6;	-- "Dealer's turn / Sum>=17 so stay"
+         elsif change_sen_idx = 7 then
+            m_sen_idx <= 7;	-- "Dealer's turn / Sum<17 so hit"
 			end if;
-         if change_sen_idx4 = 8 then -- dealer , hit -> burst
-            m_sen_idx <= 8;
+         if change_sen_idx4 = 8 then
+            m_sen_idx <= 8;	-- "Dealer's turn / But bursted..."
 			end if;
 			
-         if change_sen_idx = 9 then -- game over
-            m_sen_idx <= 9;
+         if change_sen_idx = 9 then
+            m_sen_idx <= 9;	-- "Game over / P:00 D:00 P win"
          end if;
       end if;
    end process;
 
 end Behavioral;
 
---------------------------------------------------------------------------------------------
+--------------DISPLAY_SEGMENT---------------
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -786,7 +826,6 @@ entity display_segment is
 			  ID : in integer;
 			  psum : in integer;
 			  dsum : in integer;
-	--		  SUM1 : in integer;
 			  limit : in std_logic;
            DIGIT : out  STD_LOGIC_VECTOR (6 downto 1);
            SEG_A : out  STD_LOGIC;
@@ -954,14 +993,9 @@ begin
 				sum10 <= sum10_cnt;
 			end if;
 	end process;
-	
-	
-
 end Behavioral;
 
-
-
----------------------------------------------------------------------------------------------
+--------------------MAIN--------------------
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -972,7 +1006,6 @@ entity main is
 	port (
 		rst: in std_logic;
 		clk: in std_logic;
-	--	data_out: in std_logic;
 		load_stay: in std_logic;
 		load_hit: in std_logic;
 		load_random: in std_logic;
@@ -1115,6 +1148,7 @@ begin
 		end if;
 	end process;
 	
+	-- Instantiations
 	my_player: player port map (rst, clk, load_stay, load_hit, load_random, s1_clk, s2_clk, s4_clk,
 		my_sen_idx, my_hand, my_ncard, my_playersum, my_dealersum, my_id, my_winner, my_clk_14s_sec);
 		 
@@ -1128,9 +1162,7 @@ begin
 	
 	id <= my_id;
 	
---	psum <= my_playersum;
---	dsum <= my_dealersum;
-	
+	-- Set out ports
 	DIGIT<=seg_digit;
 	SEG_A<=a;
 	SEG_B<=b;
