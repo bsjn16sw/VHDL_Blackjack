@@ -465,17 +465,17 @@ begin
 	-- Process 3: Game is in progress
 	process(clk, turn, init_set, load_stay, load_hit, fin)
 		variable idx: integer := 0;
-		variable count_clk: integer range 0 to 20000000;
-		variable cnt: std_logic :='0';
-		variable count_clk2 : integer range 0 to 10000000;
-		variable cnt2: std_logic :='0';
-		variable cnt2_tmp: std_logic :='1';
+		variable clk_delay: std_logic :='0';					-- clock for showing certain sentences on display for 5sec
+		variable count_clk: integer range 0 to 20000000;	-- count for clk_delay
+		variable clk_delay2: std_logic :='0';					-- clock for showing certain sentences on display for 2.5sec
+		variable clk_delay2_tmp: std_logic :='1';				-- assist clk_delay2, 1: delay, 0: pass
+		variable count_clk2 : integer range 0 to 10000000;	-- count for clk_delay2
 		variable cardsum_tmp: integer := 0;
 	begin
 		if rising_edge(clk) then
 			-- Make random card decks of player and dealer using Process 1 and 2
 			-- Range of random value is [1, 8]
-			if turn = '1' and init_set  = '0' and idx < 15 and cnt = '1' then
+			if turn = '1' and init_set  = '0' and idx < 15 and clk_delay = '1' then
 				make_random <= '0';
 				card(idx) <= rand_data mod 8 + 1;
 				card_d(idx) <= rand_data_d mod 8 + 1;
@@ -500,7 +500,7 @@ begin
 			
 			-- Get button input when player's turn is in progress and
 			-- initial card draw is done
-			elsif turn = '1' and init_set = '1' and cnt = '0' then
+			elsif turn = '1' and init_set = '1' and clk_delay = '0' then
 				limit <= '0';
 				
 				-- When 'Stay' button is pushed
@@ -508,10 +508,10 @@ begin
 					change_sen_idx <= 2;	-- Mark that it's time to change sen_idx to 2
 					turn1 <= '0';	-- Player's turn is done
 					fin1 <= '1';	-- Dealer's turn has to be started
-					cnt := '1';
+					clk_delay := '1';
 					count_clk := 0;
 					count_clk2 := 0;
-					cnt2 := '1';
+					clk_delay2 := '1';
 					limit <= '1';
 					
 				-- When 'Hit' button is pushed
@@ -524,10 +524,10 @@ begin
 					if cur_idx < 15 then
 						cur_idx <= cur_idx + 1;	-- Increase cur_idx by 1
 					end if;
-					cnt := '1';
+					clk_delay := '1';
 					count_clk := 0;
 					count_clk2 := 0;
-					cnt2 := '1';
+					clk_delay2 := '1';
 					limit <= '1';
 					
 					-- Check if player got bursted
@@ -538,11 +538,11 @@ begin
 			
 			-- Go on dealer's turn when player's turn is done and
 			-- signal fin marked that dealer's turn can be started
-			elsif turn = '0' and fin = '1' and cnt2 = '0' then
+			elsif turn = '0' and fin = '1' and clk_delay2 = '0' then
 				my_id <= 0;		-- Dealer's ID is 0
 				
-				if cnt2_tmp = '1' then
-					cnt2 := '1';
+				if clk_delay2_tmp = '1' then
+					clk_delay2 := '1';
 				end if;
 				count_clk2 := 0;
 				
@@ -550,40 +550,40 @@ begin
 				-- same or lower than 16
 				if cardsum_d <= 16 then
 					--
-					if cnt2_tmp = '1' then
+					if clk_delay2_tmp = '1' then
 						cardsum_tmp := cardsum_d + card_d(cur_idx_d);	-- Calculate cardsum_d again
 						if cur_idx_d < 15 then
 							cur_idx_d <= cur_idx_d + 1;	-- Increase cur_idx_d by 1
 						end if;
 					end if;
-					cnt2_tmp := '0';
+					clk_delay2_tmp := '0';
 					
 					change_sen_idx <= 7;	-- Mark that it's time to change sen_idx to 7
 					
-					if cnt2 = '0' then
+					if clk_delay2 = '0' then
 						cardsum_d <= cardsum_tmp;
-						cnt2_tmp := '1';
+						clk_delay2_tmp := '1';
 					end if;
 					
 					if cardsum_d <= 16 then
-						cnt2 := '1';
+						clk_delay2 := '1';
 					else
-						cnt2 := '0';
+						clk_delay2 := '0';
 					end if;
 					
 				-- Dealer select 'Stay' automatically when current sum is
 				-- bigger than 16
 				else
 					change_sen_idx <= 6;	-- Mark that it's time to change sen_idx to 6
-					cnt2_tmp := '0';
-					if cnt2 = '0' then	-- Go to Game over
-						cnt2 := '1';
+					clk_delay2_tmp := '0';
+					if clk_delay2 = '0' then	-- Go to Game over
+						clk_delay2 := '1';
 						fin3 <= '0';
 					end if;
 				end if;
 			
 			-- Game over since player's turn and dealer's turn are both done
-			elsif turn = '0' and fin = '0' and cnt2 = '0' then
+			elsif turn = '0' and fin = '0' and clk_delay2 = '0' then
 				change_sen_idx <= 9;	-- Mark that it's time to change sen_idx to 9
 				
 				-- Determine winner (0 for dealer and 1 for player)
@@ -608,17 +608,21 @@ begin
 				end if;
 			end if;
 			
-			if count_clk < 20000000 then -- 5000000
-               count_clk:= count_clk + 1;
-         else -- clk_1s rising/desending
-               cnt := not cnt;
+			-- make counting clock for showing certain sentences for 5 sec
+			-- clk_delay is rising evey 5 sec
+			if count_clk < 20000000 then
+               count_clk:= count_clk + 1;		-- count
+         else
+               clk_delay := not clk_delay;	-- flip
                count_clk:= 0; -- recount
          end if;
 			
-			if count_clk2 < 10000000 then -- 10000000
-               count_clk2:= count_clk2 + 1;
-         else -- clk_1s rising/desending
-               cnt2 := not cnt2;
+			-- make counting clock for showing certain sentences for 2.5 sec
+			-- clk_delay2 is rising evey 2.5 sec
+			if count_clk2 < 10000000 then
+               count_clk2:= count_clk2 + 1;		-- count
+         else
+               clk_delay2 := not clk_delay2;		-- flip
                count_clk2:= 0; -- recount
          end if;
 		end if;
@@ -840,34 +844,32 @@ end display_segment;
 
 architecture Behavioral of display_segment is
 
-signal sum10, sum01 : std_logic_vector( 3 downto 0 ); -- 현재 플레이어 점수
-signal id10, id01 : std_logic_vector( 3 downto 0 ); -- 현재 플레이어의 아이디
-signal sec10_cnt, sec01_cnt : std_logic_vector( 3 downto 0 ); -- count seconds
-signal sel : std_logic_vector( 2 downto 0 ); -- 7 segment select, select DIGIT
-signal data : std_logic_vector( 3 downto 0 ); -- display value
-signal seg : std_logic_vector( 7 downto 0 ); -- 7 segment display
-signal myid, mypsum, mydsum : integer;
---signal mysum2, mysum3 : integer;
-signal tmp : std_logic_vector(4 downto 0);
+signal sum10, sum01 : std_logic_vector( 3 downto 0 );				-- current sum of cards of player/dealer
+signal id10 : std_logic_vector( 3 downto 0 );						-- 1: player, 0: dealer
+signal sec10_cnt, sec01_cnt : std_logic_vector( 3 downto 0 );	-- count seconds
+signal sel : std_logic_vector( 2 downto 0 );							-- 7 segment select, select DIGIT
+signal data : std_logic_vector( 3 downto 0 ); 						-- display value
+signal seg : std_logic_vector( 7 downto 0 ); 						-- 7 segment display
+signal myid : integer;														-- 1: player, 0: dealer
+signal mypsum, mydsum : integer;											-- current sum of cards of player/dealer
+signal tmp : std_logic_vector(4 downto 0);							-- save value of mypsum/mydsum
 
 begin
 
-	myid <= ID;
---	mysum1 <= SUM1;
-	mypsum <= psum;
-	mydsum <= dsum;
+	myid <= ID;				-- get ID of current user(player or dealer)
+	mypsum <= psum;		-- get current sum of cards of player
+	mydsum <= dsum;		-- get current sum of cards of dealer
 	
-	-- determine LED display digit by sel value
+	
+	-- Process 1: determine LED display digit by sel value
 	process(sel)
 	begin
 			case sel is
-					when "000" => DIGIT <= "000001"; -- 현재 플레이어 점수(tens)
+					when "000" => DIGIT <= "000001"; -- id of current user(1: player, 0: dealer)
 							data <= id10;
-					--when "001" => DIGIT <= "000010"; -- 현재 플레이어 점수(units)
-							--data <= id01;
-					when "010" => DIGIT <= "000100"; -- 현재 플레이어의 아이디(tens)
+					when "010" => DIGIT <= "000100"; -- current sum of cards of current user(tens)
 							data <= sum10;
-					when "011" => DIGIT <= "001000"; -- 현재 플레이어의 아이디(units)
+					when "011" => DIGIT <= "001000"; -- current sum of cards of current user(units)
 							data <= sum01;
 					when "100" => DIGIT <= "010000"; -- second(tens)
 							data <= sec10_cnt;
@@ -878,29 +880,29 @@ begin
 	end process;
 	
 	
-	-- determine sel value, display time every 50us on 7 segment
+	-- Process 2: determine sel value, display time every 50us on 7 segment
 	process(rst_n, clk)
 			variable seg_clk_cnt: integer range 0 to 200; -- determine sweep time(4MHz clk * 200 = 50us period)
 	begin
-			if(rst_n = '0') then -- reset
+			if(rst_n = '0') then									 -- reset
 					sel <= "000";
 					seg_clk_cnt:= 0;
-			elsif(clk'event and clk='1') then
-					if(seg_clk_cnt = 200) then -- change sel value
-							seg_clk_cnt:= 0; -- recount
-							if(sel = "101") then
+			elsif(clk'event and clk='1') then				 -- when clock is rising
+					if(seg_clk_cnt = 200) then 				 -- change sel value
+							seg_clk_cnt:= 0;						 -- recount seg_clk_cnt
+							if(sel = "101") then					 -- recount sel
 									sel <= "000";
-							else
+							else										 -- count sel
 									sel <= sel + 1;
 							end if;
 					else
-							seg_clk_cnt:= seg_clk_cnt+1; 
+							seg_clk_cnt:= seg_clk_cnt+1; 		 -- count seg_clk_cnt
 					end if;
 			end if;
 	end process;
 	
 	
-	-- determine seg by data value
+	-- Process3: determine seg value by data value
 	-- 7 segment decoding process of digital clock
 	process(data)
 	begin
@@ -928,23 +930,21 @@ begin
 	SEG_G <= seg( 6 );
 	SEG_DP <= seg( 7 );
 	
-	-- count seconds by rst_n, s1_clk rising
+	-- Process4: count seconds by rst_n, s1_clk rising
 	process(CLK_1s, rst_n, limit)
 			variable s10_cnt, s01_cnt : STD_LOGIC_VECTOR ( 3 downto 0); -- count for second(tens, units)
 	begin
-			if(rst_n = '0' or limit = '1') then -- 00:00:00
-					s01_cnt:= "0000"; -- '0'
-					s10_cnt:= "0000"; -- '0'
+			if(rst_n = '0' or limit = '1') then 						-- reset to --:--:00
+					s01_cnt:= "0000";
+					s10_cnt:= "0000";
 					
-			elsif(CLK_1s = '1' and CLK_1s'event) then -- when s01_clk is rising
-					s01_cnt:= s01_cnt + 1; -- increase second(units)
-					-- count of second(units)
-					if(s01_cnt > "1001") then -- when s01_cnt = 10, recount and increase s10_cnt
-							s01_cnt:= "0000"; -- recount
-							s10_cnt:= s10_cnt + 1; -- increase s10_cnt
+			elsif(CLK_1s = '1' and CLK_1s'event) then 				-- when CLK_1s is rising
+					s01_cnt:= s01_cnt + 1; 									-- increase second(units)
+					if(s01_cnt > "1001") then 								-- when s01_cnt = 10, recount and increase s10_cnt
+							s01_cnt:= "0000"; 								-- recount
+							s10_cnt:= s10_cnt + 1; 							-- increase s10_cnt
 					end if;
-					-- --:--:15
-					if(s10_cnt = "0001" and s01_cnt > "0100") then -- go back to --:--:00
+					if(s10_cnt = "0001" and s01_cnt > "0100") then 	-- when --:--:14, go back to --:--:00
 							s10_cnt:= "0000";
 							s01_cnt:= "0000";
 					end if;
@@ -955,45 +955,47 @@ begin
 			
 	end process;
 	
-	-- display id, sum
+	-- Process5: transform inputs id and sum to display
 	process(clk, rst_n)
-			variable sum01_cnt, sum10_cnt : STD_LOGIC_VECTOR(3 downto 0);
-			variable id10_cnt : std_logic_vector(3 downto 0);
+			variable sum01_cnt, sum10_cnt : STD_LOGIC_VECTOR(3 downto 0); -- count for sum(tens, units)
+			variable id_cnt : std_logic_vector(3 downto 0); 	-- count for id
 	begin
-			if(rst_n = '0') then
-					id01 <= "0000";
+			if(rst_n = '0') then		-- reset
+					id10 <= "0000";
 					sum01 <= "0000";
 					sum10 <= "0000";
-			elsif(clk = '1' and clk'event) then
-				if myid = 1 then	-- player1
-						id10_cnt:= "0001";
-						tmp <= std_logic_vector(to_unsigned(mypsum, 5));
-				else -- dealer
-						id10_cnt:= "0000";
-						tmp <= std_logic_vector(to_unsigned(mydsum, 5));
+			elsif(clk = '1' and clk'event) then						-- when clk is rising
+				if myid = 1 then											-- player
+						id_cnt:= "0001";
+						tmp <= std_logic_vector(to_unsigned(mypsum, 5));	-- change mypsum(integer) to tmp(std_logic_vector)
+				else 															-- dealer
+						id_cnt:= "0000";
+						tmp <= std_logic_vector(to_unsigned(mydsum, 5));	-- change mydsum(integer) to tmp(std_logic_vector)
 				end if;
 				
-				if tmp < "01010" then	-- 0s
+				if tmp < "01010" then					-- when mypsum/mydsum is 0s
 						sum10_cnt:= "0000";
 						sum01_cnt:= tmp(3 downto 0);
-				elsif tmp < "10100" then	-- 10s
+				elsif tmp < "10100" then				-- when mypsum/mydsum is 10s
 						sum10_cnt:= "0001";
 						sum01_cnt:= tmp - "01010";
-				elsif tmp < "11110" then	-- 20s
+				elsif tmp < "11110" then				-- when mypsum/mydsum is 20s
 						sum10_cnt:= "0010";
 						sum01_cnt:= tmp - "10100";
-				elsif tmp <= "11111" then
+				elsif tmp <= "11111" then				-- when mypsum/mydsum is 30s
 						sum10_cnt:= "0011";
 						sum01_cnt:= tmp - "11110";
 				end if;
 				
-				--id01 <= id01_cnt;
-				id10 <= id10_cnt;
+				id10 <= id_cnt;
 				sum01 <= sum01_cnt;
 				sum10 <= sum10_cnt;
 			end if;
 	end process;
+
 end Behavioral;
+
+
 
 --------------------MAIN--------------------
 
