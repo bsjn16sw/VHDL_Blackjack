@@ -475,7 +475,7 @@ begin
 		if rising_edge(clk) then
 			-- Make random card decks of player and dealer using Process 1 and 2
 			-- Range of random value is [1, 8]
-			if turn = '1' and init_set  = '0' and idx < 15 and clk_delay = '1' then
+			if turn = '1' and init_set  = '0' and idx < 15 and clk_delay = '1' then -- make delay for 5 sec
 				make_random <= '0';
 				card(idx) <= rand_data mod 8 + 1;
 				card_d(idx) <= rand_data_d mod 8 + 1;
@@ -541,7 +541,7 @@ begin
 			elsif turn = '0' and fin = '1' and clk_delay2 = '0' then
 				my_id <= 0;		-- Dealer's ID is 0
 				
-				if clk_delay2_tmp = '1' then
+				if clk_delay2_tmp = '1' then	-- make delay for 2.5sec
 					clk_delay2 := '1';
 				end if;
 				count_clk2 := 0;
@@ -609,7 +609,7 @@ begin
 			end if;
 			
 			-- make counting clock for showing certain sentences for 5 sec
-			-- clk_delay is rising evey 5 sec
+			-- clk_delay is rising every 10 sec
 			if count_clk < 20000000 then
                count_clk:= count_clk + 1;		-- count
          else
@@ -618,7 +618,7 @@ begin
          end if;
 			
 			-- make counting clock for showing certain sentences for 2.5 sec
-			-- clk_delay2 is rising evey 2.5 sec
+			-- clk_delay2 is rising every 5 sec
 			if count_clk2 < 10000000 then
                count_clk2:= count_clk2 + 1;		-- count
          else
@@ -655,30 +655,32 @@ begin
 				timeout <= '1';
 			end if;
 		end if;
-	end process;
+	end process;	
 	
-	-- Process 6:
+	-- Process 6: display sentence shows that it is dealer's turn for 
 	process(rst, clk)		
-		variable count_clk : integer range 0 to 10000000;
-		variable cnt: std_logic := '0';
-		variable cnt_tmp: std_logic := '0';
+		variable clk_delay: std_logic := '0';					-- clock for showing certain sentences on display for 2.5sec
+		variable clk_delay_tmp: std_logic := '0';				-- assist clk_delay, 0: delay, 1: pass
+		variable count_clk : integer range 0 to 10000000;	-- count for clk_delay
 	begin
 		if rising_edge(clk) then
-			if timeout = '1' and cnt = '0' then
-				if cnt_tmp = '0' then
-					cnt := '1';
+			if timeout = '1' and clk_delay = '0' then
+				if clk_delay_tmp = '0' then	-- make delay for 2.5sec
+					clk_delay := '1';
 					count_clk := 0;
-					cnt_tmp := '1';
-				else
+					clk_delay_tmp := '1';
+				else									-- after 2.5sec
 					fin2 <= '1';
 					turn2 <= '0';
 				end if;
 			end if;
 			
-			if count_clk < 10000000 then -- 10000000
-				count_clk:= count_clk + 1;
+			-- make counting clock for showing certain sentences for 2.5 sec
+			-- clk_delay is rising every 5 sec
+			if count_clk < 10000000 then
+				count_clk:= count_clk + 1;	-- count
 			else
-				cnt := not cnt;
+				clk_delay := not clk_delay;	-- flip
 				count_clk:= 0; -- recount
 			end if;
 		end if;
@@ -687,9 +689,9 @@ begin
 	-- Process 7: Control timing to display LCD
 	-- when player of dealer got bursted
 	process(clk)
-      variable count_clk : integer range 0 to 10000000;
-      variable cnt: std_logic :='0';
-      variable cnt_tmp: std_logic := '0';
+      variable clk_delay: std_logic :='0';					-- clock for showing certain sentences on display for 2.5sec
+      variable clk_delay_tmp: std_logic := '0';				-- assist clk_delay, 0: delay, 1: pass
+      variable count_clk : integer range 0 to 10000000;	-- count for clk_delay
    begin
       if rising_edge(clk) then
          -- Player got bursted when player's turn is in progress,
@@ -697,12 +699,12 @@ begin
          if turn = '1' and init_set = '1' then
             if cardsum > 21 then
                change_sen_idx4 <= 4;	-- Mark it's time to change sen_idx to 4
-               if fin4 = '0' then
+               if fin4 = '0' then		-- make delay for 2.5sec
                   count_clk := 0;
-                  cnt := '0';
+                  clk_delay := '0';		
                end if;
                fin4 <= '1';
-               if cnt='1' then
+               if clk_delay='1' then	-- after 2.5sec
                   turn4 <= '0';
                end if;
             end if;
@@ -713,20 +715,22 @@ begin
          elsif turn = '0' and fin = '1' then
             if cardsum_d > 21 then
                change_sen_idx4 <= 8;	-- Mark it's time to change sen_idx to 8
-               if cnt_tmp = '0' then
-                  cnt := '1';
-                  cnt_tmp := '1';
+               if clk_delay_tmp = '0' then	-- make delay for 2.5sec
+                  clk_delay := '1';
+                  clk_delay_tmp := '1';
                end if;
-               if cnt = '0' then
+               if clk_delay = '0' then		-- after 2.5sec
                   fin5 <= '0';
                end if;
             end if;
          end if;
          
-         if count_clk < 10000000 then -- 10000000
-               count_clk:= count_clk + 1;
-         else -- clk_1s rising/desending
-               cnt := not cnt;
+			-- make counting clock for showing certain sentences for 2.5 sec
+			-- clk_delay is rising every 5 sec
+         if count_clk < 10000000 then
+               count_clk:= count_clk + 1;		-- count
+         else
+               clk_delay := not clk_delay;	-- flip
                count_clk:= 0; -- recount
          end if;
          
